@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/SystemCare/BackupLocation.cs" Link="BackupLocation.cs" />
+    <Compile Include="../../src/SystemCare/RemovalReview.cs" Link="RemovalReview.cs" />
   </ItemGroup>
 </Project>

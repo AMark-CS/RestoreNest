@@ -1,0 +1,25 @@
+# Backup engine investigation
+
+RestoreNest needs a backup stored in a user-selected local directory and a restore that preserves the partition containing that backup. No engine has been selected or verified yet.
+
+## Windows Backup (`wbadmin`)
+
+Microsoft documents `-allCritical` for bare-metal backups, but a local `-backupTarget` is a drive letter or volume GUID, not an arbitrary local directory. The backup target cannot be one of the critical volumes included in the backup. A network share supports a directory but is outside the initial local-disk scope, and repeated backups to a share may overwrite earlier ones. See [wbadmin start backup](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wbadmin-start-backup).
+
+Do not silently replace the user's chosen directory with the root of its drive. The behavior and partition selection of bare-metal recovery need an end-to-end test before this can be considered as a backend.
+
+## DISM images
+
+DISM can capture a drive into a WIM at a selected path, but an image of the Windows volume alone does not establish that all boot and recovery partitions, partition metadata, BitLocker behavior, or user data can be restored correctly. Microsoft's documented capture workflow boots into Windows PE. See [capture and apply Windows using WIM](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/capture-and-apply-windows-using-a-single-wim?view=windows-11).
+
+FFU captures a physical drive and therefore cannot simply be restored over the same disk while promising to preserve a D: partition and a backup stored there. Microsoft also documents FFU capture restrictions. See [FFU images](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/deploy-windows-using-full-flash-update--ffu?view=windows-11).
+
+## Required acceptance before enabling writes
+
+1. Confirm redistribution licenses and availability in Windows 10/11 and recovery media.
+2. On disposable virtual disks, capture a UEFI/GPT system to a directory on a separate D: partition of the same physical disk. Restore only the selected required partitions and verify D: and its backup are unchanged.
+3. Boot the restored system and validate files, installed applications and boot configuration; repeat with a separate external target.
+4. Test BitLocker, storage drivers, missing/corrupt media and interrupted restores. Block unsupported layouts before any write.
+5. Measure end-to-end backup and restore times on the agreed hardware and dataset. Integrity verification is necessary but does not itself prove bootability.
+
+The host currently has no detected QEMU, VirtualBox, or Hyper-V management command in its PATH. Do not test restoration against the user's live system disk.
