@@ -1,12 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/SystemCare/BackupLocation.cs" Link="BackupLocation.cs" />
     <Compile Include="../../src/SystemCare/RemovalReview.cs" Link="RemovalReview.cs" />
+    <Compile Include="../../src/SystemCare/AppChoice.cs" Link="AppChoice.cs" />
+    <Compile Include="../../src/SystemCare/InstalledApps.cs" Link="InstalledApps.cs" />
   </ItemGroup>
 </Project>

@@ -6,14 +6,14 @@ namespace SystemCare;
 
 public partial class MainWindow : Window
 {
-    private readonly List<InstalledApp> apps;
+    private readonly List<AppChoice> apps;
     private bool English => LanguagePicker.SelectedIndex == 1;
     private string T(string zh, string en) => English ? en : zh;
 
     public MainWindow()
     {
         InitializeComponent();
-        apps = InstalledApps.Get();
+        apps = InstalledApps.Get().Select(app => new AppChoice(app)).ToList();
         RefreshText();
         FilterApps();
     }
@@ -34,13 +34,25 @@ public partial class MainWindow : Window
         BackupNotice.Text = T("备份引擎尚未完成；此页面只检查路径，不会创建备份。请使用经过验证的备份工具保护重要数据。", "The backup engine is not implemented. This page only checks the path and does not create a backup. Use a verified backup tool for important data.");
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
         CheckPath();
+        UpdateSelectionCount();
     }
 
     private void SearchChanged(object sender, TextChangedEventArgs e) { if (IsInitialized) FilterApps(); }
     private void FilterApps()
     {
         var query = Search.Text.Trim();
-        AppList.ItemsSource = apps.Where(a => a.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        AppList.ItemsSource = apps.Where(a => a.App.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.App.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+    }
+
+    private void SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (IsInitialized) Dispatcher.BeginInvoke(UpdateSelectionCount);
+    }
+
+    private void UpdateSelectionCount()
+    {
+        var count = apps.Count(choice => choice.IsSelected);
+        SelectionCount.Text = T($"已勾选 {count} 项（包括搜索结果之外的项目）", $"{count} selected (including items outside the search results)");
     }
 
     private void PathChanged(object sender, TextChangedEventArgs e) { if (IsInitialized) CheckPath(); }
@@ -80,7 +92,7 @@ public partial class MainWindow : Window
 
     private void ReviewClick(object sender, RoutedEventArgs e)
     {
-        var selected = AppList.SelectedItems.Cast<InstalledApp>().ToList();
+        var selected = apps.Where(choice => choice.IsSelected).Select(choice => choice.App).ToList();
         if (selected.Count == 0)
         {
             System.Windows.MessageBox.Show(this, T("请先选择软件。", "Select one or more apps first."), "RestoreNest");
@@ -90,7 +102,7 @@ public partial class MainWindow : Window
         var report = new System.Text.StringBuilder();
         foreach (var app in selected)
         {
-            var status = RemovalReview.Assess(app.Location, apps.Where(other => !ReferenceEquals(app, other)).Select(other => other.Location), protectedPaths);
+            var status = RemovalReview.Assess(app.Location, apps.Select(choice => choice.App).Where(other => !ReferenceEquals(app, other)).Select(other => other.Location), protectedPaths);
             var message = status switch
             {
                 "unknown" => T("安装位置未知或格式无效", "Location unknown or invalid"),

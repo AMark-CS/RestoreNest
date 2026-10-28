@@ -21,3 +21,10 @@ Check(RemovalReview.Assess(@"C:\Apps\Example", new[] { @"c:\apps\example" }, pro
 Check(RemovalReview.Assess(@"C:\Apps\Example", new[] { @"C:\Apps\Example2" }, protectedPaths) == "unverified", "similar prefix is not shared");
 Check(RemovalReview.Assess(@"relative\path", Array.Empty<string>(), protectedPaths) == "unknown", "relative location rejected");
 Console.WriteLine("Removal review checks passed.");
+
+var choices = new[] { new AppChoice(new InstalledApp("Alpha", "Vendor", "1", "")), new AppChoice(new InstalledApp("Beta", "Vendor", "1", "")) };
+choices[0].IsSelected = true;
+var filtered = choices.Where(c => c.App.Name.Contains("Beta")).ToList();
+filtered[0].IsSelected = true;
+Check(choices.Count(c => c.IsSelected) == 2, "selection persists across filtering");
+Console.WriteLine("App selection checks passed.");

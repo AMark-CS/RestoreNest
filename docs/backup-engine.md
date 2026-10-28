@@ -23,3 +23,11 @@ FFU captures a physical drive and therefore cannot simply be restored over the s
 5. Measure end-to-end backup and restore times on the agreed hardware and dataset. Integrity verification is necessary but does not itself prove bootability.
 
 The host currently has no detected QEMU, VirtualBox, or Hyper-V management command in its PATH. Do not test restoration against the user's live system disk.
+
+## Existing projects to evaluate
+
+* [Windows Backup & Recovery Tool](https://github.com/abdullah-erturk/Windows-Backup-Recovery-Tool) describes VSS, DISM WIM capture, and separate partition restore. Its documented direct-capture fallback after VSS failure does not satisfy RestoreNest's consistency requirement. Its exclusion list, EFI handling, licenses and D: preservation require source review and isolated tests.
+* [UrBackup](https://github.com/uroni/urbackup_backend) supports image backups and recovery, but is a client/server system and its repository is AGPL-3.0. Fit, distribution obligations, local storage and recovery behavior require evaluation before integration.
+* [Bulkhead](https://github.com/sp00nznet/bulkhead) describes VHDX imaging and WinPE recovery under MIT. Its maturity, component licenses, isolation of selected partitions and restore correctness have not been independently validated.
+
+These are candidates, not recommendations to use on production systems. A project's own README or checksum verification does not substitute for the recovery acceptance tests above.
