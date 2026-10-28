@@ -35,6 +35,17 @@ Check(!QihooIdentification.IsCandidate("My 360安全卫士 unrelated"), "substri
 Check(!QihooIdentification.IsCandidate("360度全景工具"), "unrelated 360 app excluded");
 Console.WriteLine("360 candidate checks passed.");
 
+var backupArguments = WbadminBackup.BuildArguments(@"D:\", @"C:\");
+Check(backupArguments.SequenceEqual(new[] { "start", "backup", "-backupTarget:D:", "-allCritical", "-vssCopy", "-quiet" }), "wbadmin arguments");
+foreach (var invalid in new[] { @"D:\Folder", @"C:\", @"\\server\share", @"D:relative", "" })
+{
+    try { WbadminBackup.BuildArguments(invalid, @"C:\"); throw new Exception("unsafe backup target accepted: " + invalid); }
+    catch (ArgumentException) { }
+}
+try { WbadminBackup.BuildArguments(@"D:\", ""); throw new Exception("unknown system volume accepted"); }
+catch (ArgumentException) { }
+Console.WriteLine("Backup command checks passed.");
+
 var fixture = Path.Combine(Path.GetTempPath(), "restorenest-test-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(fixture);
 try

@@ -8,6 +8,8 @@ Microsoft documents `-allCritical` for bare-metal backups, but a local `-backupT
 
 Do not silently replace the user's chosen directory with the root of its drive. The behavior and partition selection of bare-metal recovery need an end-to-end test before this can be considered as a backend.
 
+An experimental `WbadminBackup` code path prepares a VSS copy of critical volumes to a local NTFS drive root, rejects the Windows drive and an existing `WindowsImageBackup` directory, and invokes `wbadmin` without a shell. It is deliberately not exposed in the interface. Its preflight does not establish the identity of all critical volumes or prove backup retention under concurrency, and it cannot honor a user-selected local subdirectory. No actual backup or recovery has been executed against this implementation.
+
 ## DISM images
 
 DISM can capture a drive into a WIM at a selected path, but an image of the Windows volume alone does not establish that all boot and recovery partitions, partition metadata, BitLocker behavior, or user data can be restored correctly. Microsoft's documented capture workflow boots into Windows PE. See [capture and apply Windows using WIM](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/capture-and-apply-windows-using-a-single-wim?view=windows-11).
