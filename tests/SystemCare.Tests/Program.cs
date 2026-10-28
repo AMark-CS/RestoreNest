@@ -28,3 +28,30 @@ var filtered = choices.Where(c => c.App.Name.Contains("Beta")).ToList();
 filtered[0].IsSelected = true;
 Check(choices.Count(c => c.IsSelected) == 2, "selection persists across filtering");
 Console.WriteLine("App selection checks passed.");
+
+Check(QihooIdentification.IsCandidate("360安全卫士 版本 1"), "360 security candidate");
+Check(QihooIdentification.IsCandidate("360 Total Security"), "360 English candidate");
+Check(!QihooIdentification.IsCandidate("My 360安全卫士 unrelated"), "substring is not product name");
+Check(!QihooIdentification.IsCandidate("360度全景工具"), "unrelated 360 app excluded");
+Console.WriteLine("360 candidate checks passed.");
+
+var fixture = Path.Combine(Path.GetTempPath(), "restorenest-test-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(fixture);
+try
+{
+    var file = Path.Combine(fixture, "image.bin");
+    File.WriteAllText(file, "known backup data");
+    var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file)));
+    var manifest = new BackupManifest(1, new[] { new BackupFile("image.bin", hash) });
+    Check(BackupVerification.Verify(fixture, manifest), "valid backup verifies");
+    File.WriteAllText(file, "changed");
+    Check(!BackupVerification.Verify(fixture, manifest), "modified backup rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(1, new[] { new BackupFile("../outside", hash) })), "traversal rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(1, new[] { new BackupFile("missing.bin", hash) })), "missing file rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(1, new[] { new BackupFile("image.bin", "not-a-hash") })), "invalid hash rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(1, new[] { new BackupFile("image.bin", hash), new BackupFile("IMAGE.BIN", hash) })), "duplicate paths rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(1, Array.Empty<BackupFile>())), "empty manifest rejected");
+    Check(!BackupVerification.Verify(fixture, new BackupManifest(2, new[] { new BackupFile("image.bin", hash) })), "unknown version rejected");
+    Console.WriteLine("Backup integrity checks passed.");
+}
+finally { Directory.Delete(fixture, true); }

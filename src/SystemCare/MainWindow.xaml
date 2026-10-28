@@ -5,12 +5,12 @@
     <TextBlock Grid.Row="1" x:Name="Intro" Foreground="#58677F" Margin="0,0,0,18" TextWrapping="Wrap"/>
     <TabControl Grid.Row="2" x:Name="Tabs">
       <TabItem x:Name="AppsTab"><Grid Margin="16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <TextBox x:Name="Search" Padding="10" Margin="0,0,0,12" TextChanged="SearchChanged"/>
+        <DockPanel Margin="0,0,0,12"><CheckBox x:Name="QihooFilter" DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Checked="QihooFilterChanged" Unchecked="QihooFilterChanged"/><TextBox x:Name="Search" Padding="10" TextChanged="SearchChanged"/></DockPanel>
         <ListView x:Name="AppList" Grid.Row="1"><ListView.View><GridView><GridViewColumn Width="45"><GridViewColumn.CellTemplate><DataTemplate><CheckBox AutomationProperties.Name="{Binding App.Name}" IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Checked="SelectionChanged" Unchecked="SelectionChanged"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn><GridViewColumn x:Name="NameColumn" DisplayMemberBinding="{Binding App.Name}" Width="260"/><GridViewColumn x:Name="PublisherColumn" DisplayMemberBinding="{Binding App.Publisher}" Width="210"/><GridViewColumn x:Name="VersionColumn" DisplayMemberBinding="{Binding App.Version}" Width="140"/></GridView></ListView.View></ListView>
         <DockPanel Grid.Row="2" Margin="0,14,0,0"><Button x:Name="ReviewButton" DockPanel.Dock="Right" Padding="14,8" Margin="12,0,0,0" Click="ReviewClick"/><StackPanel><TextBlock x:Name="SelectionCount" Margin="0,0,0,4"/><TextBlock x:Name="AppsNotice" Foreground="#6D5B35" TextWrapping="Wrap"/></StackPanel></DockPanel>
       </Grid></TabItem>
       <TabItem x:Name="BackupTab"><StackPanel Margin="20"><TextBlock x:Name="BackupTitle" FontSize="21" FontWeight="SemiBold"/><TextBlock x:Name="PathLabel" Margin="0,20,0,8"/><DockPanel><Button x:Name="Browse" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="16,8" Click="BrowseClick"/><TextBox x:Name="BackupPath" Padding="8" Text="D:\系统备份" TextChanged="PathChanged"/></DockPanel><TextBlock x:Name="PathStatus" Margin="0,12,0,0" TextWrapping="Wrap"/><TextBlock x:Name="BackupNotice" Margin="0,24,0,0" Foreground="#6D5B35" TextWrapping="Wrap"/></StackPanel></TabItem>
-      <TabItem x:Name="RecoveryTab"><TextBlock x:Name="RecoveryNotice" Margin="20" TextWrapping="Wrap" FontSize="15"/></TabItem>
+      <TabItem x:Name="RecoveryTab"><StackPanel Margin="20"><TextBlock x:Name="RecoveryNotice" TextWrapping="Wrap" FontSize="15"/><Button x:Name="VerifyButton" HorizontalAlignment="Left" Margin="0,20,0,0" Padding="14,8" Click="VerifyClick"/><TextBlock x:Name="VerifyStatus" Margin="0,12,0,0" TextWrapping="Wrap"/></StackPanel></TabItem>
     </TabControl>
   </Grid>
 </Window>

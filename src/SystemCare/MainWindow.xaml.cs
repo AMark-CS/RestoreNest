@@ -29,19 +29,22 @@ public partial class MainWindow : Window
         AppsTab.Header = T("软件管理", "Apps"); BackupTab.Header = T("系统备份", "Backup"); RecoveryTab.Header = T("恢复与启动", "Recovery & boot");
         NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version");
         AppsNotice.Text = T("目前仅提供软件清单。强制删除及 360 专项适配尚未完成，无法执行删除。", "Inventory only. Forced removal and 360-specific handling are not implemented; removal is unavailable.");
+        QihooFilter.Content = T("仅显示 360 候选", "360 candidates only");
         ReviewButton.Content = T("检查所选软件", "Review selection");
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
         BackupNotice.Text = T("备份引擎尚未完成；此页面只检查路径，不会创建备份。请使用经过验证的备份工具保护重要数据。", "The backup engine is not implemented. This page only checks the path and does not create a backup. Use a verified backup tool for important data.");
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
+        VerifyButton.Content = T("校验备份清单…", "Verify backup manifest…");
         CheckPath();
         UpdateSelectionCount();
     }
 
     private void SearchChanged(object sender, TextChangedEventArgs e) { if (IsInitialized) FilterApps(); }
+    private void QihooFilterChanged(object sender, RoutedEventArgs e) { if (IsInitialized) FilterApps(); }
     private void FilterApps()
     {
         var query = Search.Text.Trim();
-        AppList.ItemsSource = apps.Where(a => a.App.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.App.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        AppList.ItemsSource = apps.Where(a => (QihooFilter.IsChecked != true || QihooIdentification.IsCandidate(a.App.Name)) && (a.App.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.App.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
     }
 
     private void SelectionChanged(object sender, RoutedEventArgs e)
@@ -88,6 +91,32 @@ public partial class MainWindow : Window
     {
         using var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = T("选择备份文件夹", "Choose a backup folder"), UseDescriptionForTitle = true };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) BackupPath.Text = dialog.SelectedPath;
+    }
+
+    private async void VerifyClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "JSON (*.json)|*.json", Title = T("选择备份清单", "Choose a backup manifest") };
+        if (dialog.ShowDialog(this) != true) return;
+        VerifyButton.IsEnabled = false;
+        VerifyStatus.Text = T("正在校验文件…", "Verifying files…");
+        try
+        {
+            var valid = await Task.Run(() =>
+            {
+                using var stream = new FileStream(dialog.FileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+                if (stream.Length > 2 * 1024 * 1024) return false;
+                var manifest = System.Text.Json.JsonSerializer.Deserialize<BackupManifest>(stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return manifest is not null && BackupVerification.Verify(Path.GetDirectoryName(dialog.FileName)!, manifest);
+            });
+            VerifyStatus.Text = valid
+                ? T("清单中的文件校验通过；这不代表备份可启动或可恢复。", "Listed files passed verification; this does not prove the backup can boot or be restored.")
+                : T("校验失败：清单无效、文件缺失或内容不匹配。", "Verification failed: invalid manifest, missing file or content mismatch.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or System.Security.SecurityException)
+        {
+            VerifyStatus.Text = T("无法读取或解析清单。", "Unable to read or parse the manifest.");
+        }
+        finally { VerifyButton.IsEnabled = true; }
     }
 
     private void ReviewClick(object sender, RoutedEventArgs e)
