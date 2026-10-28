@@ -1,0 +1,16 @@
+<Window x:Class="SystemCare.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="RestoreNest" Width="1000" Height="690" MinWidth="740" MinHeight="500" Background="#F4F7FB" FontFamily="Segoe UI">
+  <Grid Margin="28">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <DockPanel Margin="0,0,0,20"><ComboBox x:Name="LanguagePicker" DockPanel.Dock="Right" Width="130" SelectedIndex="0" SelectionChanged="LanguageChanged"><ComboBoxItem Content="简体中文"/><ComboBoxItem Content="English"/></ComboBox><TextBlock Text="RestoreNest" FontSize="27" FontWeight="SemiBold" Foreground="#17233B"/></DockPanel>
+    <TextBlock Grid.Row="1" x:Name="Intro" Foreground="#58677F" Margin="0,0,0,18" TextWrapping="Wrap"/>
+    <TabControl Grid.Row="2" x:Name="Tabs">
+      <TabItem x:Name="AppsTab"><Grid Margin="16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBox x:Name="Search" Padding="10" Margin="0,0,0,12" TextChanged="SearchChanged"/>
+        <ListView x:Name="AppList" Grid.Row="1" SelectionMode="Extended"><ListView.View><GridView><GridViewColumn x:Name="NameColumn" DisplayMemberBinding="{Binding Name}" Width="280"/><GridViewColumn x:Name="PublisherColumn" DisplayMemberBinding="{Binding Publisher}" Width="220"/><GridViewColumn x:Name="VersionColumn" DisplayMemberBinding="{Binding Version}" Width="140"/></GridView></ListView.View></ListView>
+        <TextBlock Grid.Row="2" x:Name="AppsNotice" Margin="0,14,0,0" Foreground="#6D5B35" TextWrapping="Wrap"/>
+      </Grid></TabItem>
+      <TabItem x:Name="BackupTab"><StackPanel Margin="20"><TextBlock x:Name="BackupTitle" FontSize="21" FontWeight="SemiBold"/><TextBlock x:Name="PathLabel" Margin="0,20,0,8"/><DockPanel><Button x:Name="Browse" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="16,8" Click="BrowseClick"/><TextBox x:Name="BackupPath" Padding="8" Text="D:\系统备份" TextChanged="PathChanged"/></DockPanel><TextBlock x:Name="PathStatus" Margin="0,12,0,0" TextWrapping="Wrap"/><TextBlock x:Name="BackupNotice" Margin="0,24,0,0" Foreground="#6D5B35" TextWrapping="Wrap"/></StackPanel></TabItem>
+      <TabItem x:Name="RecoveryTab"><TextBlock x:Name="RecoveryNotice" Margin="20" TextWrapping="Wrap" FontSize="15"/></TabItem>
+    </TabControl>
+  </Grid>
+</Window>
