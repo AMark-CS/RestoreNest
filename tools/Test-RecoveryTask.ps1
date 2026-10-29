@@ -24,6 +24,10 @@ if ($backup.DiskNumber -eq $windows.DiskNumber) { throw 'Separate backup and sys
 if (-not $backup.DriveLetter) { throw 'Backup volume has no drive letter; automatic assignment is not supported.' }
 $backupFolder = Join-Path ($backup.DriveLetter.ToString() + ':\') ('WindowsImageBackup\' + $task.Machine)
 if (-not (Test-Path -LiteralPath $backupFolder -PathType Container)) { throw 'Machine backup directory not found.' }
+$catalog = & wbadmin.exe get versions "-backupTarget:$($backup.DriveLetter):" "-machine:$($task.Machine)" 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Backup catalog query failed (exit code $LASTEXITCODE)." }
+$versions = @($catalog | ForEach-Object { if ("$_" -match '^[^:：\r\n]+[:：]\s*(\d{2}/\d{2}/\d{4}-\d{2}:\d{2})\s*$') { $Matches[1] } })
+if ($versions -cnotcontains $task.Version) { throw 'Selected backup version was not found in the catalog.' }
 [pscustomobject]@{
     Version = $task.Version
     Machine = $task.Machine
@@ -32,5 +36,5 @@ if (-not (Test-Path -LiteralPath $backupFolder -PathType Container)) { throw 'Ma
     BackupDrive = $backup.DriveLetter
     WindowsDisk = $windows.DiskNumber
     WindowsPartition = $windows.PartitionNumber
-    Status = 'Identity checks passed; backup contents, recovery layout and bootability are NOT verified. No recovery was executed.'
+    Status = 'Identity and version checks passed; backup contents, recovery layout and bootability are NOT verified. No recovery was executed.'
 }
