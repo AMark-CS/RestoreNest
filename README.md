@@ -6,6 +6,8 @@ The current build provides a bilingual (简体中文 / English) inventory of reg
 
 Requires .NET 8 SDK and Windows Desktop runtime. Build with `dotnet build src/SystemCare` and run the path validation checks with `dotnet run --project tests/SystemCare.Tests`.
 
+The recovery page also exports an experimental JSON task containing the selected version and GPT disk/partition identities. This does not perform recovery. See [recovery handoff](docs/recovery-handoff.md) for the read-only preflight and outstanding validation.
+
 ## 安全说明
 
 目前可查看已登记的桌面软件、按名称筛选可能的 360 产品、只读检查安装位置、查看备份目标信息、按盘符只读查询并选择 Windows 备份版本，以及试验性校验 SHA-256 清单。选择版本不会执行恢复。名称和注册表位置不能证明文件归属，校验通过也不代表镜像可以恢复或启动。强制删除、360 专项适配、系统备份、系统恢复、启动菜单和恢复 U 盘均未实现。请勿将本项目用于保护或恢复实际数据。

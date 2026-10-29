@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         CatalogButton.Content = T("查询磁盘上的备份", "List backups on drive");
         CatalogDrive.ToolTip = T("输入备份所在的盘符根目录，例如 D:\\。查询可能需要管理员权限。", "Enter the backup drive root, for example D:\\. Listing may require administrator privileges.");
         RecoveryVersionsLabel.Text = T("备份版本（仅供查看）", "Backup version (view only)");
+        ExportRecoveryButton.Content = T("导出实验性恢复任务…", "Export experimental recovery task…");
         RecoveryVersions.ToolTip = T("选择查询到的备份版本；选择本身不会恢复系统。", "Select a discovered backup version; selecting it does not restore the system.");
         VerifyButton.Content = T("校验备份清单…", "Verify backup manifest…");
         CheckPath();
@@ -148,6 +149,32 @@ public partial class MainWindow : Window
         if (!IsInitialized) return;
         RecoveryVersions.ItemsSource = null;
         CatalogOutput.Clear();
+    }
+
+    private async void ExportRecoveryClick(object sender, RoutedEventArgs e)
+    {
+        if (RecoveryVersions.SelectedItem is not string version)
+        {
+            System.Windows.MessageBox.Show(this, T("请先查询并选择一个备份版本。", "Query and select a backup version first."), "RestoreNest");
+            return;
+        }
+        var backupRoot = CatalogDrive.Text.Trim();
+        ExportRecoveryButton.IsEnabled = false;
+        try
+        {
+            var windowsRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
+            var task = new RecoveryTask(1, version, Environment.MachineName, await RecoveryTask.IdentifyAsync(backupRoot), await RecoveryTask.IdentifyAsync(windowsRoot));
+            task.Validate();
+            var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "JSON (*.json)|*.json", FileName = "restorenest-recovery.json" };
+            if (dialog.ShowDialog(this) != true) return;
+            File.WriteAllText(dialog.FileName, System.Text.Json.JsonSerializer.Serialize(task, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            CatalogOutput.Text = T("恢复任务已导出，已记录 GPT 磁盘和分区标识。可用 tools/Test-RecoveryTask.ps1 只读检查身份；恢复执行器尚未接通。", "Recovery task exported with GPT disk and partition identities. tools/Test-RecoveryTask.ps1 can check identities without writing; recovery execution is not connected yet.");
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
+        {
+            CatalogOutput.Text = T("无法导出恢复任务：", "Unable to export recovery task: ") + ex.Message;
+        }
+        finally { ExportRecoveryButton.IsEnabled = true; }
     }
 
     private void ReviewClick(object sender, RoutedEventArgs e)

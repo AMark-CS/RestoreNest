@@ -57,6 +57,17 @@ var catalog = "Backup time: 10/29/2026 2:53 AM\nVersion identifier: 10/29/2026-0
 Check(RecoveryCatalog.ParseVersions(catalog).SequenceEqual(new[] { "10/29/2026-09:53", "11/30/2026-23:59" }), "only valid unique version identifiers are listed");
 Check(RecoveryCatalog.ParseVersions("Error 10/29/2026-09:53 extra\n").Count == 0, "unstructured output is not a version");
 Console.WriteLine("Recovery version parsing checks passed.");
+var sourceVolume = new RecoveryVolume(Guid.NewGuid(), Guid.NewGuid());
+var targetVolume = new RecoveryVolume(Guid.NewGuid(), Guid.NewGuid());
+var recoveryTask = new RecoveryTask(1, "10/29/2026-09:53", "RN-VM", sourceVolume, targetVolume);
+recoveryTask.Validate();
+foreach (var invalidTask in new[] { recoveryTask with { Version = "02/30/2026-09:53" }, recoveryTask with { Schema = 2 }, recoveryTask with { Machine = "bad & name" }, recoveryTask with { Windows = sourceVolume }, recoveryTask with { Backup = sourceVolume with { Partition = Guid.Empty } } })
+{
+    try { invalidTask.Validate(); throw new Exception("invalid recovery task accepted"); }
+    catch (ArgumentException) { }
+}
+Check(System.Text.Json.JsonSerializer.Deserialize<RecoveryTask>(System.Text.Json.JsonSerializer.Serialize(recoveryTask)) == recoveryTask, "recovery task round trip preserves identities");
+Console.WriteLine("Recovery task checks passed.");
 
 var fixture = Path.Combine(Path.GetTempPath(), "restorenest-test-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(fixture);
