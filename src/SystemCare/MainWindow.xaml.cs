@@ -34,6 +34,8 @@ public partial class MainWindow : Window
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
         BackupNotice.Text = T("备份引擎尚未完成；此页面只检查路径，不会创建备份。请使用经过验证的备份工具保护重要数据。", "The backup engine is not implemented. This page only checks the path and does not create a backup. Use a verified backup tool for important data.");
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
+        CatalogButton.Content = T("查询磁盘上的备份", "List backups on drive");
+        CatalogDrive.ToolTip = T("输入备份所在的盘符根目录，例如 D:\\。查询可能需要管理员权限。", "Enter the backup drive root, for example D:\\. Listing may require administrator privileges.");
         VerifyButton.Content = T("校验备份清单…", "Verify backup manifest…");
         CheckPath();
         UpdateSelectionCount();
@@ -117,6 +119,23 @@ public partial class MainWindow : Window
             VerifyStatus.Text = T("无法读取或解析清单。", "Unable to read or parse the manifest.");
         }
         finally { VerifyButton.IsEnabled = true; }
+    }
+
+    private async void CatalogClick(object sender, RoutedEventArgs e)
+    {
+        CatalogButton.IsEnabled = false;
+        CatalogOutput.Text = T("正在查询 Windows 备份…", "Listing Windows backups…");
+        try
+        {
+            var result = await RecoveryCatalog.ReadAsync(CatalogDrive.Text.Trim());
+            var prefix = result.ExitCode == 0 ? "" : T($"查询失败（退出代码 {result.ExitCode}）。可能需要管理员权限。\n", $"Query failed (exit code {result.ExitCode}). Administrator privileges may be required.\n");
+            CatalogOutput.Text = prefix + result.Output;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
+        {
+            CatalogOutput.Text = T("无法查询。请输入本地磁盘根目录，例如 D:\\。", "Unable to query. Enter a local drive root such as D:\\.") + "\n" + ex.Message;
+        }
+        finally { CatalogButton.IsEnabled = true; }
     }
 
     private void ReviewClick(object sender, RoutedEventArgs e)

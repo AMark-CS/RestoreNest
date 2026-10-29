@@ -13,5 +13,6 @@
     <Compile Include="../../src/SystemCare/BackupVerification.cs" Link="BackupVerification.cs" />
     <Compile Include="../../src/SystemCare/QihooIdentification.cs" Link="QihooIdentification.cs" />
     <Compile Include="../../src/SystemCare/WbadminBackup.cs" Link="WbadminBackup.cs" />
+    <Compile Include="../../src/SystemCare/RecoveryCatalog.cs" Link="RecoveryCatalog.cs" />
   </ItemGroup>
 </Project>

@@ -46,6 +46,14 @@ try { WbadminBackup.BuildArguments(@"D:\", ""); throw new Exception("unknown sys
 catch (ArgumentException) { }
 Console.WriteLine("Backup command checks passed.");
 
+Check(RecoveryCatalog.BuildArguments(@"D:\").SequenceEqual(new[] { "get", "versions", "-backupTarget:D:" }), "recovery catalog arguments");
+foreach (var invalid in new[] { @"D:\Folder", @"\\server\share", @"D:relative", "" })
+{
+    try { RecoveryCatalog.BuildArguments(invalid); throw new Exception("unsafe catalog target accepted: " + invalid); }
+    catch (ArgumentException) { }
+}
+Console.WriteLine("Recovery catalog checks passed.");
+
 var fixture = Path.Combine(Path.GetTempPath(), "restorenest-test-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(fixture);
 try
