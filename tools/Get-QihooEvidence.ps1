@@ -10,7 +10,7 @@ $uninstallRoots = @(
 )
 $apps = @(Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
     Where-Object { $_.DisplayName -match $pattern -or $_.Publisher -match $pattern } |
-    Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, PSChildName)
+    Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, PSPath, PSChildName)
 $services = @($(foreach ($class in @('Win32_SystemDriver', 'Win32_Service')) { Get-CimInstance -ClassName $class }) |
     Where-Object { $_.Name -match $pattern -or $_.DisplayName -match $pattern -or $_.PathName -match $pattern } |
     Select-Object Name, DisplayName, PathName, State, StartMode, SystemName)
@@ -30,7 +30,7 @@ $files = foreach ($root in $roots) {
     }
 }
 $evidence = [ordered]@{
-    Schema = 1
+    Schema = 2
     CapturedUtc = [DateTime]::UtcNow.ToString('o')
     Computer = $env:COMPUTERNAME
     Applications = $apps
