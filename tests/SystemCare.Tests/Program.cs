@@ -53,6 +53,10 @@ foreach (var invalid in new[] { @"D:\Folder", @"\\server\share", @"D:relative", 
     catch (ArgumentException) { }
 }
 Console.WriteLine("Recovery catalog checks passed.");
+var catalog = "Backup time: 10/29/2026 2:53 AM\nVersion identifier: 10/29/2026-09:53\n版本标识符: 11/30/2026-23:59\nVersion identifier: 02/30/2026-09:53\nVersion identifier: 10/29/2026-09:53\n";
+Check(RecoveryCatalog.ParseVersions(catalog).SequenceEqual(new[] { "10/29/2026-09:53", "11/30/2026-23:59" }), "only valid unique version identifiers are listed");
+Check(RecoveryCatalog.ParseVersions("Error 10/29/2026-09:53 extra\n").Count == 0, "unstructured output is not a version");
+Console.WriteLine("Recovery version parsing checks passed.");
 
 var fixture = Path.Combine(Path.GetTempPath(), "restorenest-test-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(fixture);

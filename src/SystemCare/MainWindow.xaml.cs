@@ -36,6 +36,8 @@ public partial class MainWindow : Window
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
         CatalogButton.Content = T("查询磁盘上的备份", "List backups on drive");
         CatalogDrive.ToolTip = T("输入备份所在的盘符根目录，例如 D:\\。查询可能需要管理员权限。", "Enter the backup drive root, for example D:\\. Listing may require administrator privileges.");
+        RecoveryVersionsLabel.Text = T("备份版本（仅供查看）", "Backup version (view only)");
+        RecoveryVersions.ToolTip = T("选择查询到的备份版本；选择本身不会恢复系统。", "Select a discovered backup version; selecting it does not restore the system.");
         VerifyButton.Content = T("校验备份清单…", "Verify backup manifest…");
         CheckPath();
         UpdateSelectionCount();
@@ -124,18 +126,28 @@ public partial class MainWindow : Window
     private async void CatalogClick(object sender, RoutedEventArgs e)
     {
         CatalogButton.IsEnabled = false;
+        CatalogDrive.IsEnabled = false;
+        RecoveryVersions.ItemsSource = null;
         CatalogOutput.Text = T("正在查询 Windows 备份…", "Listing Windows backups…");
         try
         {
             var result = await RecoveryCatalog.ReadAsync(CatalogDrive.Text.Trim());
             var prefix = result.ExitCode == 0 ? "" : T($"查询失败（退出代码 {result.ExitCode}）。可能需要管理员权限。\n", $"Query failed (exit code {result.ExitCode}). Administrator privileges may be required.\n");
             CatalogOutput.Text = prefix + result.Output;
+            if (result.ExitCode == 0) RecoveryVersions.ItemsSource = RecoveryCatalog.ParseVersions(result.Output);
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
         {
             CatalogOutput.Text = T("无法查询。请输入本地磁盘根目录，例如 D:\\。", "Unable to query. Enter a local drive root such as D:\\.") + "\n" + ex.Message;
         }
-        finally { CatalogButton.IsEnabled = true; }
+        finally { CatalogDrive.IsEnabled = true; CatalogButton.IsEnabled = true; }
+    }
+
+    private void CatalogDriveChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        RecoveryVersions.ItemsSource = null;
+        CatalogOutput.Clear();
     }
 
     private void ReviewClick(object sender, RoutedEventArgs e)
