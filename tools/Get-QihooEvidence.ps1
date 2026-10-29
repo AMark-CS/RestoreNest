@@ -8,7 +8,8 @@ $uninstallRoots = @(
     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
     'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
 )
-$apps = @(Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
+$uninstallErrors = @()
+$apps = @(Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue -ErrorVariable +uninstallErrors |
     Where-Object { $_.DisplayName -match $pattern -or $_.Publisher -match $pattern } |
     Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation, UninstallString, PSPath, PSChildName)
 $services = @($(foreach ($class in @('Win32_SystemDriver', 'Win32_Service')) { Get-CimInstance -ClassName $class }) |
@@ -30,7 +31,9 @@ $files = foreach ($root in $roots) {
     }
 }
 $evidence = [ordered]@{
-    Schema = 2
+    Schema = 3
+    Complete = ($uninstallErrors.Count -eq 0)
+    UninstallReadErrors = $uninstallErrors.Count
     CapturedUtc = [DateTime]::UtcNow.ToString('o')
     Computer = $env:COMPUTERNAME
     Applications = $apps

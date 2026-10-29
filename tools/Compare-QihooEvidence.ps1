@@ -2,8 +2,9 @@ param([Parameter(Mandatory=$true)][string]$BeforePath, [Parameter(Mandatory=$tru
 $ErrorActionPreference = 'Stop'
 $before = Get-Content -LiteralPath $BeforePath -Raw | ConvertFrom-Json
 $after = Get-Content -LiteralPath $AfterPath -Raw | ConvertFrom-Json
-if ($before.Schema -ne 2 -or $after.Schema -ne 2 -or [string]::IsNullOrWhiteSpace($before.Computer) -or $before.Computer -ne $after.Computer) { throw 'Snapshots must use schema 2 and come from the same machine.' }
+if ($before.Schema -ne 3 -or $after.Schema -ne 3 -or [string]::IsNullOrWhiteSpace($before.Computer) -or $before.Computer -ne $after.Computer) { throw 'Snapshots must use schema 3 and come from the same machine.' }
 foreach ($snapshot in @($before, $after)) {
+    if ($snapshot.Complete -isnot [bool] -or -not $snapshot.Complete) { throw 'Snapshot capture is incomplete.' }
     foreach ($category in @('Applications', 'ServicesAndDrivers', 'ScheduledTasks', 'Files')) {
         if ($null -eq $snapshot.PSObject.Properties[$category] -or $null -eq $snapshot.$category) { throw "Missing snapshot category: $category" }
     }
