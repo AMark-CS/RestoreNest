@@ -1,6 +1,6 @@
 # Backup engine investigation
 
-RestoreNest needs a backup stored in a user-selected local directory and a restore that preserves the partition containing that backup. No engine has been selected or verified yet.
+RestoreNest needs a backup stored in a user-selected local directory and a restore that preserves the partition containing that backup. No engine has yet met these requirements.
 
 ## Windows Backup (`wbadmin`)
 
@@ -8,7 +8,7 @@ Microsoft documents `-allCritical` for bare-metal backups, but a local `-backupT
 
 Do not silently replace the user's chosen directory with the root of its drive. The behavior and partition selection of bare-metal recovery need an end-to-end test before this can be considered as a backend.
 
-An experimental `WbadminBackup` code path prepares a VSS copy of critical volumes to a local NTFS drive root, rejects the Windows drive and an existing `WindowsImageBackup` directory, and invokes `wbadmin` without a shell. It is deliberately not exposed in the interface. Its preflight does not establish the identity of all critical volumes or prove backup retention under concurrency, and it cannot honor a user-selected local subdirectory. No actual backup or recovery has been executed against this implementation.
+An experimental `WbadminBackup` code path prepares a VSS copy of critical volumes to a local NTFS drive root, rejects the Windows drive and an existing `WindowsImageBackup` directory, and invokes `wbadmin` without a shell. It is deliberately not exposed in the interface. Its preflight does not establish the identity of all critical volumes or prove backup retention under concurrency, and it cannot honor a user-selected local subdirectory. One isolated Windows 10 test created a backup through this code and restored it with a separate native recovery harness; the recovered system reached the lock screen. See [the test record](isolated-vm-test.md). This does not validate the product's restore workflow or the other requirements below.
 
 ## DISM images
 
@@ -24,7 +24,7 @@ FFU captures a physical drive and therefore cannot simply be restored over the s
 4. Test BitLocker, storage drivers, missing/corrupt media and interrupted restores. Block unsupported layouts before any write.
 5. Measure end-to-end backup and restore times on the agreed hardware and dataset. Integrity verification is necessary but does not itself prove bootability.
 
-The host currently has no detected QEMU, VirtualBox, or Hyper-V management command in its PATH. Do not test restoration against the user's live system disk.
+Do not test restoration against the user's live system disk.
 
 ## Existing projects to evaluate
 
