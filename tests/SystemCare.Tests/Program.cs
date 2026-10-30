@@ -35,6 +35,17 @@ Check(!QihooIdentification.IsCandidate("My 360安全卫士 unrelated"), "substri
 Check(!QihooIdentification.IsCandidate("360度全景工具"), "unrelated 360 app excluded");
 Console.WriteLine("360 candidate checks passed.");
 
+var productCode = "{AAD3D77A-7476-469F-ADF4-04424124E91D}";
+Check(MsiUninstall.ProductCode(productCode, 1) == Guid.Parse(productCode), "registered MSI product recognized");
+Check(MsiUninstall.ProductCode(productCode, 0) is null, "non-MSI registration rejected");
+Check(MsiUninstall.ProductCode(productCode, "1") is null, "malformed installer flag rejected");
+Check(MsiUninstall.ProductCode("not-a-guid", 1) is null, "invalid MSI product rejected");
+Check(MsiUninstall.ProductCode(Guid.Empty.ToString("B"), 1) is null, "empty product rejected");
+Check(MsiUninstall.BuildArguments(Guid.Parse(productCode)).SequenceEqual(new[] { "/x", productCode, "/qn", "/norestart" }), "safe MSI uninstall arguments");
+try { MsiUninstall.BuildArguments(Guid.Empty); throw new Exception("empty MSI product accepted"); }
+catch (ArgumentException) { }
+Console.WriteLine("MSI uninstall command checks passed.");
+
 var backupArguments = WbadminBackup.BuildArguments(@"D:\", @"C:\");
 Check(backupArguments.SequenceEqual(new[] { "start", "backup", "-backupTarget:D:", "-allCritical", "-vssCopy", "-quiet" }), "wbadmin arguments");
 foreach (var invalid in new[] { @"D:\Folder", @"C:\", @"\\server\share", @"D:relative", "" })

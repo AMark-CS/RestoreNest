@@ -10,6 +10,7 @@
     <Compile Include="../../src/SystemCare/RemovalReview.cs" Link="RemovalReview.cs" />
     <Compile Include="../../src/SystemCare/AppChoice.cs" Link="AppChoice.cs" />
     <Compile Include="../../src/SystemCare/InstalledApps.cs" Link="InstalledApps.cs" />
+    <Compile Include="../../src/SystemCare/MsiUninstall.cs" Link="MsiUninstall.cs" />
     <Compile Include="../../src/SystemCare/BackupVerification.cs" Link="BackupVerification.cs" />
     <Compile Include="../../src/SystemCare/QihooIdentification.cs" Link="QihooIdentification.cs" />
     <Compile Include="../../src/SystemCare/WbadminBackup.cs" Link="WbadminBackup.cs" />
