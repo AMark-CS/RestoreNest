@@ -8,4 +8,6 @@ The task is unsigned and editable; it is not authorization to write a disk. Befo
 
 The WPF application is not itself a WinPE application. A recovery environment still needs a separately built and tested frontend/runtime. Windows Storage cmdlets and PowerShell are not available in every WinPE image; the preflight requires those components.
 
+The ADK WinPE image built and boot-tested on 2026-10-30 contains PowerShell and StorageWMI, but its WIM file listing does not contain `wbadmin.exe`. The existing preflight and proposed `wbadmin` restore therefore cannot be assumed to work in that image. The previous successful native restore used Windows installation media, a different environment. A supported recovery environment with the required tool and dependencies must be verified before connecting the restore button.
+
 Validation so far: task validation and serialization tests, mocked preflight checks for drive-letter resolution, a missing version and ambiguous disks, a clean WPF build, and a read-only host Storage-cmdlet probe. Export through the UI and identity matching after a VM reboot remain untested. Forced removal and 360 removal remain separate unfinished work.
