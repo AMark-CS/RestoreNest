@@ -33,7 +33,7 @@ public partial class MainWindow : Window
         QihooFilter.Content = T("仅显示 360 候选", "360 candidates only");
         ReviewButton.Content = T("检查所选软件", "Review selection");
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
-        BackupNotice.Text = T("使用 Windows 备份创建系统映像，需要管理员权限和独立的 NTFS 卷。当前仅支持卷根目录，已有 WindowsImageBackup 的卷不会使用。应用内恢复尚未完成；耗时取决于数据和磁盘速度。", "Create a system image with Windows Backup. Administrator access and a separate NTFS volume are required. Only drive roots are supported, and volumes containing WindowsImageBackup are refused. In-app recovery is not ready; duration depends on data and disk speed.");
+        BackupNotice.Text = T("使用 Windows 备份创建系统映像，需要管理员权限和非系统 NTFS 卷。当前仅支持卷根目录，已有 WindowsImageBackup 的卷不会使用。尚未验证恢复时同一物理磁盘其他分区能否保留；建议使用独立磁盘。应用内恢复尚未完成。", "Create a system image with Windows Backup. Administrator access and a non-system NTFS volume are required. Only drive roots are supported, and volumes containing WindowsImageBackup are refused. Preservation of other partitions on the same physical disk during recovery is unverified; a separate disk is recommended. In-app recovery is not ready.");
         StartBackupButton.Content = T("创建系统备份", "Create system backup");
         System.Windows.Automation.AutomationProperties.SetName(BackupProgress, T("备份进行中", "Backup in progress"));
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
@@ -117,7 +117,7 @@ public partial class MainWindow : Window
             return;
         }
         var confirm = System.Windows.MessageBox.Show(this,
-            T($"将系统关键卷备份到 {destination}。备份可能耗时较长；当前应用还不能执行系统恢复。继续吗？", $"Back up the critical system volumes to {destination}. This may take a while; recovery is not yet available in this app. Continue?"),
+            T($"将系统关键卷备份到 {destination}。恢复时同一物理磁盘的其他分区能否保留尚未验证；当前应用还不能执行恢复。备份耗时取决于数据和磁盘速度。继续吗？", $"Back up the critical system volumes to {destination}. Preservation of other partitions on the same physical disk during recovery is unverified, and recovery is not yet available in this app. Duration depends on data and disk speed. Continue?"),
             "RestoreNest", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
         backupRunning = true;
