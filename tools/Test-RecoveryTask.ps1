@@ -28,6 +28,8 @@ $catalog = & wbadmin.exe get versions "-backupTarget:$($backup.DriveLetter):" "-
 if ($LASTEXITCODE -ne 0) { throw "Backup catalog query failed (exit code $LASTEXITCODE)." }
 $versions = @($catalog | ForEach-Object { if ("$_" -match '^[^:：\r\n]+[:：]\s*(\d{2}/\d{2}/\d{4}-\d{2}:\d{2})\s*$') { $Matches[1] } })
 if ($versions -cnotcontains $task.Version) { throw 'Selected backup version was not found in the catalog.' }
+$items = @(& wbadmin.exe get items "-version:$($task.Version)" "-backupTarget:$($backup.DriveLetter):" "-machine:$($task.Machine)" 2>&1)
+if ($LASTEXITCODE -ne 0) { throw "Backup items query failed (exit code $LASTEXITCODE)." }
 [pscustomobject]@{
     Version = $task.Version
     Machine = $task.Machine
@@ -36,5 +38,6 @@ if ($versions -cnotcontains $task.Version) { throw 'Selected backup version was 
     BackupDrive = $backup.DriveLetter
     WindowsDisk = $windows.DiskNumber
     WindowsPartition = $windows.PartitionNumber
+    BackupItems = @($items | ForEach-Object { "$_" })
     Status = 'Identity and version checks passed; backup contents, recovery layout and bootability are NOT verified. No recovery was executed.'
 }
