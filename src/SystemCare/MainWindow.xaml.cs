@@ -7,6 +7,7 @@ namespace SystemCare;
 public partial class MainWindow : Window
 {
     private readonly List<AppChoice> apps;
+    private bool backupRunning;
     private bool English => LanguagePicker.SelectedIndex == 1;
     private string T(string zh, string en) => English ? en : zh;
 
@@ -32,7 +33,9 @@ public partial class MainWindow : Window
         QihooFilter.Content = T("仅显示 360 候选", "360 candidates only");
         ReviewButton.Content = T("检查所选软件", "Review selection");
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
-        BackupNotice.Text = T("备份引擎尚未完成；此页面只检查路径，不会创建备份。请使用经过验证的备份工具保护重要数据。", "The backup engine is not implemented. This page only checks the path and does not create a backup. Use a verified backup tool for important data.");
+        BackupNotice.Text = T("使用 Windows 备份创建系统映像，需要管理员权限和独立的 NTFS 卷。当前仅支持卷根目录，已有 WindowsImageBackup 的卷不会使用。应用内恢复尚未完成；耗时取决于数据和磁盘速度。", "Create a system image with Windows Backup. Administrator access and a separate NTFS volume are required. Only drive roots are supported, and volumes containing WindowsImageBackup are refused. In-app recovery is not ready; duration depends on data and disk speed.");
+        StartBackupButton.Content = T("创建系统备份", "Create system backup");
+        System.Windows.Automation.AutomationProperties.SetName(BackupProgress, T("备份进行中", "Backup in progress"));
         RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
         CatalogButton.Content = T("查询磁盘上的备份", "List backups on drive");
         CatalogDrive.ToolTip = T("输入备份所在的盘符根目录，例如 D:\\。查询可能需要管理员权限。", "Enter the backup drive root, for example D:\\. Listing may require administrator privileges.");
@@ -68,11 +71,17 @@ public partial class MainWindow : Window
     {
         var path = BackupPath.Text.Trim();
         var error = BackupLocation.Validate(path, Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? @"C:\");
+        if (error is null)
+        {
+            try { WbadminBackup.BuildArguments(path, Environment.GetFolderPath(Environment.SpecialFolder.Windows)); }
+            catch (ArgumentException) { error = "root"; }
+        }
         PathStatus.Text = error switch
         {
             "system" => T("不能使用 Windows 所在分区。", "The Windows partition cannot be used."),
             "network" => T("当前不支持网络路径。", "Network paths are not supported."),
             "absolute" => T("请选择完整的本地路径。", "Choose an absolute local path."),
+            "root" => T("当前仅支持磁盘根目录，例如 D:\\。", "Only drive roots such as D:\\ are currently supported."),
             _ => DescribeDrive(path)
         };
     }
@@ -96,6 +105,61 @@ public partial class MainWindow : Window
     {
         using var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = T("选择备份文件夹", "Choose a backup folder"), UseDescriptionForTitle = true };
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) BackupPath.Text = dialog.SelectedPath;
+    }
+
+    private async void StartBackupClick(object sender, RoutedEventArgs e)
+    {
+        var destination = BackupPath.Text.Trim();
+        try { WbadminBackup.BuildArguments(destination, Environment.GetFolderPath(Environment.SpecialFolder.Windows)); }
+        catch (ArgumentException)
+        {
+            System.Windows.MessageBox.Show(this, T("请选择非系统卷的本地磁盘根目录，例如 D:\\。", "Choose a local drive root on a non-system volume, such as D:\\."), "RestoreNest");
+            return;
+        }
+        var confirm = System.Windows.MessageBox.Show(this,
+            T($"将系统关键卷备份到 {destination}。备份可能耗时较长；当前应用还不能执行系统恢复。继续吗？", $"Back up the critical system volumes to {destination}. This may take a while; recovery is not yet available in this app. Continue?"),
+            "RestoreNest", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+        backupRunning = true;
+        StartBackupButton.IsEnabled = false; Browse.IsEnabled = false; BackupPath.IsEnabled = false;
+        BackupProgress.Visibility = Visibility.Visible;
+        BackupOutput.Text = T("正在启动 Windows 备份…\n", "Starting Windows Backup…\n");
+        try
+        {
+            var exitCode = await WbadminBackup.RunAsync(destination, line => Dispatcher.BeginInvoke(() =>
+            {
+                if (BackupOutput.Text.Length > 20000) BackupOutput.Text = BackupOutput.Text[^10000..];
+                BackupOutput.AppendText(line + "\n");
+                BackupOutput.ScrollToEnd();
+            }));
+            BackupOutput.AppendText(exitCode == 0
+                ? T("\nWindows 备份已完成。请使用可用的恢复工具验证该备份。", "\nWindows Backup completed. Verify the backup with an available recovery tool.")
+                : T($"\n备份失败，退出代码 {exitCode}。", $"\nBackup failed, exit code {exitCode}."));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            BackupOutput.AppendText(T("\n访问被拒绝：请以管理员身份运行，并检查目标磁盘权限。", "\nAccess denied: run as administrator and check permissions on the destination."));
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
+        {
+            BackupOutput.AppendText(T("\n无法启动或完成备份：", "\nUnable to start or complete backup: ") + ex.Message);
+        }
+        finally
+        {
+            backupRunning = false;
+            BackupProgress.Visibility = Visibility.Collapsed;
+            StartBackupButton.IsEnabled = true; Browse.IsEnabled = true; BackupPath.IsEnabled = true;
+        }
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (backupRunning)
+        {
+            e.Cancel = true;
+            System.Windows.MessageBox.Show(this, T("备份正在进行，请等待完成后再关闭。", "A backup is running. Wait for it to finish before closing."), "RestoreNest");
+        }
+        base.OnClosing(e);
     }
 
     private async void VerifyClick(object sender, RoutedEventArgs e)

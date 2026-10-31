@@ -17,7 +17,7 @@ public static class WbadminBackup
         return new[] { "start", "backup", "-backupTarget:" + root[..2], "-allCritical", "-vssCopy", "-quiet" };
     }
 
-    // shortcut: no user-facing entry until recovery, existing-backup retention and volume identity have been tested in an isolated Windows VM.
+    // shortcut: existing backup folders are refused until retention and repeated backups are tested.
     public static async Task<int> RunAsync(string destination, Action<string> progress)
     {
         var systemRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? throw new InvalidOperationException("Windows volume unavailable.");

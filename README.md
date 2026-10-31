@@ -2,7 +2,7 @@
 
 Windows 10/11 system maintenance and recovery project. **Early development preview, not a backup or recovery product.**
 
-The current build provides a bilingual (简体中文 / English) inventory of registered desktop applications, a name-only filter for possible 360 products, selection retained across searches, a read-only location review, backup destination information, a read-only Windows backup catalog query and version selection by drive root, and experimental SHA-256 manifest verification. Selecting a version does not perform recovery. The review is conservative: names and registry locations do not establish ownership. It does not remove applications, create backups, restore a system, modify boot configuration, or create recovery media. Do not rely on it to protect data.
+The current build provides a bilingual (简体中文 / English) inventory of registered desktop applications, a name-only filter for possible 360 products, selection retained across searches, a read-only location review, a read-only Windows backup catalog query and version selection by drive root, and experimental SHA-256 manifest verification. The backup page can invoke Windows Backup to create an experimental system image on a local NTFS drive root; it refuses a target with an existing `WindowsImageBackup` folder and requires administrator privileges. Selecting a version does not perform recovery. Names and registry locations do not establish ownership. The app does not remove applications, restore a system, modify boot configuration, or create recovery media. Its backup interface has not yet been tested end to end in the VM; do not rely on this preview to protect data.
 
 Requires .NET 8 SDK and Windows Desktop runtime. Build with `dotnet build src/SystemCare` and run the path validation checks with `dotnet run --project tests/SystemCare.Tests`.
 
@@ -10,7 +10,7 @@ The recovery page also exports an experimental JSON task containing the selected
 
 ## 安全说明
 
-目前可查看已登记的桌面软件、按名称筛选可能的 360 产品、只读检查安装位置、查看备份目标信息、按盘符只读查询并选择 Windows 备份版本，以及试验性校验 SHA-256 清单。选择版本不会执行恢复。名称和注册表位置不能证明文件归属，校验通过也不代表镜像可以恢复或启动。强制删除、360 专项适配、系统备份、系统恢复、启动菜单和恢复 U 盘均未实现。请勿将本项目用于保护或恢复实际数据。
+目前可查看已登记的软件、筛选可能的 360 产品、只读检查安装位置、查询备份版本，以及试验性校验 SHA-256 清单。备份页面可调用 Windows 备份创建试验性系统映像，需要管理员权限和本地 NTFS 卷根目录；已有 `WindowsImageBackup` 的目标会被拒绝。选择版本不会执行恢复。强制删除、360 专项适配、系统恢复、启动菜单和恢复 U 盘均未完成。备份界面尚未经虚拟机端到端测试，请勿依赖此预览版保护或恢复实际数据。
 
 ## Experimental manifest / 试验性清单
 

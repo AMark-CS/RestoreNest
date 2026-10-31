@@ -10,7 +10,7 @@ Date: 2026-10-29. This is one experimental test, not a release qualification.
 
 The guest clock recorded approximately 14 minutes for the backup, but software emulation can affect the clock; this is not an elapsed-time benchmark or a 30-minute guarantee. Restore duration was not measured reliably.
 
-The experimental backup path is not connected to the application UI and accepts a drive root, not an arbitrary directory. The recovery command was run by the test harness, not by a RestoreNest recovery feature. Same-physical-disk backup preservation, external drives, Windows 11, BitLocker, failure cases, and interrupted recovery remain untested. The VM images and logs are local test artifacts and are not included in the repository.
+The experimental backup path is now available through the application UI, but that interface has not been exercised end to end; it accepts a drive root, not an arbitrary directory. The recovery command was run by the test harness, not by a RestoreNest recovery feature. Same-physical-disk backup preservation, external drives, Windows 11, BitLocker, failure cases, and interrupted recovery remain untested. The VM images and logs are local test artifacts and are not included in the repository.
 
 ## Further isolated preparation, 2026-10-30
 
