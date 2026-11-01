@@ -43,6 +43,16 @@ The booted Windows 10 guest ran `New-RestorePoint.ps1` (no `-NoSnapshot`, defaul
 | WinPE checks | `winload.efi` back, mutation markers gone, live marker restored, one Windows volume, one data volume, partition layout identical, data hashes identical, backup still verifies, `bootmgfw.efi` present: all PASS |
 | Boot restored disk, autologon, guest script | logged in and ran: live marker restored, post-capture marker gone, `winload.efi` present, data volume present, data hashes identical: all PASS |
 
+## Failure injection and the app-to-script layer
+
+| Test | Result |
+|---|---|
+| Offline capture killed (QEMU stopped) 5 minutes in | no partial image is listed; `Get-RestorePoint` lists only the 2 complete points; a `.partial` folder stays on disk and is reclaimed by the next create after 2 h; a new capture still plans normally |
+| Restore (`Restore.ps1 -Execute`) killed ~2 minutes into the apply, then run again from scratch | second run completed (1,050 s); same 11 WinPE checks as before PASS (hashes, partition layout, markers, backup verifies, `bootmgfw.efi`); restored system logged in and passed the live checks |
+| The app's own C# code (`RestorePoints.ListAsync` / `RunScriptAsync`) run inside the guest as a self-contained exe | lists points and parses every field; a name like `测试 name; calc` stays one argument; script output streams back; a system-drive destination is rejected (exit 1) |
+
+Not tested: the WPF window itself in the guest (no .NET 8 desktop runtime there; the window was only rendered offscreen on the host), power loss at other points of a restore (for example during `Format-Volume`, where the Windows partition is by definition unusable until a restore finishes), and a low-space destination in a real capture (the free-space check is unit-tested only).
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
@@ -54,4 +64,4 @@ The booted Windows 10 guest ran `New-RestorePoint.ps1` (no `-NoSnapshot`, defaul
 
 ## Not verified
 
-Windows 11; Secure Boot; BitLocker/TPM; interrupted capture or restore; low space; physical hardware and real storage drivers; selecting the entry with the keyboard in the boot menu; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (this run reused an existing WinPE image); the WPF restore points page driving the scripts.
+Windows 11; Secure Boot; BitLocker/TPM; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; selecting the entry with the keyboard in the boot menu; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (this run reused an existing WinPE image); the WPF restore points page driving the scripts.

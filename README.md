@@ -18,7 +18,7 @@ Windows 10/11 maintenance tool: **manage installed software and disk space, and 
 
 Details, durations (QEMU emulation, not hardware speed), the bugs these runs found, and what is still untested: [docs/vm-validation.md](docs/vm-validation.md).
 
-The older `wbadmin` backup page and the read-only recovery-task export remain as an experimental alternative (separate-disk only).
+The old `wbadmin` route (backup page, recovery-task export, manifest verifier) was removed in 0.1.x; it stays in git history.
 
 ## Status: what "unverified" means
 
@@ -42,7 +42,3 @@ Lab helpers for a Hyper-V test VM are in `tools/lab`.
 ## 安全说明
 
 0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载尚未用真实安装包在虚拟机中验证）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**但仅限一个镜像、离线、无 Secure Boot、无 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。
-
-## Legacy: experimental manifest verification
-
-The verifier accepts UTF-8 JSON up to 2 MiB: `{"version":1,"files":[{"path":"image.bin","sha256":"<64 hex chars>"}]}`. Paths are relative to the manifest; traversal, duplicates and reparse points are rejected. It checks files against the manifest only, not manifest origin or bootability.
