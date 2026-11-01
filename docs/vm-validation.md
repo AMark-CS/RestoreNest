@@ -7,7 +7,7 @@ This records what was actually run, so the README claims can be checked. Everyth
 - Disposable qcow2 overlay on the existing Windows 10 base image; one GPT disk, 96 GiB: EFI, MSR, Windows, Recovery.
 - WinPE (Windows 10 2004 setup `boot.wim` with PowerShell and Storage, already used in earlier tests) booted from a FAT USB image. A harness script on a small results disk ran one stage per boot (info, prep, baseline, capture, mutate, restore, verify, bootentry, bootremove) and wrote logs and `RN_CHECK … PASS/FAIL` lines back for the host to read.
 - The harness and the QEMU launch scripts live outside the repository (they contain machine-specific paths). The product scripts under `tools/` were the ones executed, unmodified apart from the fixes listed below.
-- Capture was **offline** (`-NoSnapshot`) because WinPE has no VSS. A live VSS capture has not been run.
+- The first capture was **offline** (`-NoSnapshot`) because WinPE has no VSS. A second capture was done **online with VSS** inside the running guest (see "Online VSS capture").
 
 ## Setup
 
@@ -32,6 +32,17 @@ In WinPE the Windows partition was shrunk 87.9 → 60 GiB and a 20 GiB NTFS data
 | `Install-BootEntry.ps1 -Remove -Store` | entry and state file removed; default OS and timeout unchanged |
 | Install entry, damage C:, `Restore.ps1 -Execute` (second full cycle, ~26 min restore) | `bcdboot` kept the entry; `Restore.ps1` reported it still present and did not re-create it; the final BCD has exactly one "RestoreNest Recovery" entry, default still Windows, timeout still 30 |
 
+## Online VSS capture (live guest)
+
+The booted Windows 10 guest ran `New-RestorePoint.ps1` (no `-NoSnapshot`, default LZX) via an offline-configured autologon + RunOnce. The evaluation licence's `wlms.exe` forced shutdown had killed an earlier attempt at 54%, so `wlms` was disabled in the test guest only.
+
+| Step | Result |
+|---|---|
+| Online capture with `--snapshot` | OK, 4.48 GiB, 7,609 s under QEMU TCG (software emulation: **not** a real-hardware time); `Get-RestorePoint -Verify` status ok |
+| Restore this online image from WinPE (`Restore.ps1 -Execute`, 134,751 files, 984 s) | OK; `bcdboot` succeeded |
+| WinPE checks | `winload.efi` back, mutation markers gone, live marker restored, one Windows volume, one data volume, partition layout identical, data hashes identical, backup still verifies, `bootmgfw.efi` present: all PASS |
+| Boot restored disk, autologon, guest script | logged in and ran: live marker restored, post-capture marker gone, `winload.efi` present, data volume present, data hashes identical: all PASS |
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
@@ -43,4 +54,4 @@ In WinPE the Windows partition was shrunk 87.9 → 60 GiB and a 20 GiB NTFS data
 
 ## Not verified
 
-Live VSS capture; Windows 11; Secure Boot; BitLocker/TPM; interrupted capture or restore; low space; physical hardware and real storage drivers; selecting the entry with the keyboard in the boot menu; logging in after restore or checking application state; the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (this run reused an existing WinPE image); the WPF restore points page driving the scripts.
+Windows 11; Secure Boot; BitLocker/TPM; interrupted capture or restore; low space; physical hardware and real storage drivers; selecting the entry with the keyboard in the boot menu; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (this run reused an existing WinPE image); the WPF restore points page driving the scripts.
