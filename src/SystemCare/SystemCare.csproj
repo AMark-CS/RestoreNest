@@ -7,5 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Scripts the app shells out to; wimlib-imagex.exe (GPLv3+) is deliberately not in the repo: place it in tools\bin. -->
+    <Content Include="..\..\tools\New-RestorePoint.ps1;..\..\tools\Get-RestorePoint.ps1;..\..\tools\Restore.ps1;..\..\tools\Install-BootEntry.ps1;..\..\tools\Build-WinPE.ps1;..\..\tools\RestorePoint.Common.ps1;..\..\tools\RestorePlan.Common.ps1" Link="tools\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\tools\bin\**" Link="tools\bin\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

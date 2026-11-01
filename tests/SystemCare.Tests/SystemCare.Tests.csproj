@@ -16,5 +16,11 @@
     <Compile Include="../../src/SystemCare/WbadminBackup.cs" Link="WbadminBackup.cs" />
     <Compile Include="../../src/SystemCare/RecoveryCatalog.cs" Link="RecoveryCatalog.cs" />
     <Compile Include="../../src/SystemCare/RecoveryTask.cs" Link="RecoveryTask.cs" />
+    <Compile Include="../../src/SystemCare/DiskOverview.cs" Link="DiskOverview.cs" />
+    <Compile Include="../../src/SystemCare/RestorePoints.cs" Link="RestorePoints.cs" />
+    <Compile Include="../../src/SystemCare/Uninstaller.cs" Link="Uninstaller.cs" />
+    <Compile Include="../../src/SystemCare/PowerShell.cs" Link="PowerShell.cs" />
+    <Compile Include="../../src/SystemCare/AppxApps.cs" Link="AppxApps.cs" />
+    <Compile Include="../../src/SystemCare/LeftoverScanner.cs" Link="LeftoverScanner.cs" />
   </ItemGroup>
 </Project>

@@ -6,7 +6,7 @@ namespace SystemCare;
 
 public partial class MainWindow : Window
 {
-    private readonly List<AppChoice> apps;
+    private List<AppChoice> apps = new();
     private bool backupRunning;
     private bool English => LanguagePicker.SelectedIndex == 1;
     private string T(string zh, string en) => English ? en : zh;
@@ -14,9 +14,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        apps = InstalledApps.Get().Select(app => new AppChoice(app)).ToList();
         RefreshText();
-        FilterApps();
+        RefreshDisks();
+        _ = LoadAppsAsync();
     }
 
     private void LanguageChanged(object sender, SelectionChangedEventArgs e)
@@ -27,9 +27,13 @@ public partial class MainWindow : Window
     private void RefreshText()
     {
         Intro.Text = T("系统维护与恢复 · 开发预览版", "System maintenance and recovery · development preview");
+        RefreshRestoreText();
+        DisksTab.Header = T("磁盘概览", "Disks"); DisksTitle.Text = T("各磁盘空间概览", "Disk space overview"); RefreshDisksButton.Content = T("刷新", "Refresh");
+        DiskNameColumn.Header = T("磁盘", "Drive"); DiskFormatColumn.Header = T("格式", "Format"); DiskUsageColumn.Header = T("使用率", "Usage"); DiskUsedColumn.Header = T("已用 / 总量", "Used / total"); DiskFreeColumn.Header = T("可用", "Free"); SizeColumn.Header = T("大小", "Size");
+        UninstallButton.Content = T("卸载所选软件", "Uninstall selected");
         AppsTab.Header = T("软件管理", "Apps"); BackupTab.Header = T("系统备份", "Backup"); RecoveryTab.Header = T("恢复与启动", "Recovery & boot");
         NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version");
-        AppsNotice.Text = T("目前仅提供软件清单。强制删除及 360 专项适配尚未完成，无法执行删除。", "Inventory only. Forced removal and 360-specific handling are not implemented; removal is unavailable.");
+        AppsNotice.Text = T("卸载前会尝试创建系统还原点；卸载后列出残留候选，由你确认再删除。", "A restore point is attempted before uninstalling; leftover candidates are listed for you to confirm.");
         QihooFilter.Content = T("仅显示 360 候选", "360 candidates only");
         ReviewButton.Content = T("检查所选软件", "Review selection");
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
@@ -249,11 +253,11 @@ public partial class MainWindow : Window
             System.Windows.MessageBox.Show(this, T("请先选择软件。", "Select one or more apps first."), "RestoreNest");
             return;
         }
-        var protectedPaths = new[] { Environment.GetFolderPath(Environment.SpecialFolder.Windows), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) }.Where(p => !string.IsNullOrEmpty(p));
+        var protectedPaths = ProtectedTrees(); var protectedRoots = ProtectedRoots();
         var report = new System.Text.StringBuilder();
         foreach (var app in selected)
         {
-            var status = RemovalReview.Assess(app.Location, apps.Select(choice => choice.App).Where(other => !ReferenceEquals(app, other)).Select(other => other.Location), protectedPaths);
+            var status = RemovalReview.Assess(app.Location, apps.Select(choice => choice.App).Where(other => !ReferenceEquals(app, other)).Select(other => other.Location), protectedPaths, protectedRoots);
             var message = status switch
             {
                 "unknown" => T("安装位置未知或格式无效", "Location unknown or invalid"),
