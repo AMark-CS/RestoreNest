@@ -29,11 +29,6 @@ filtered[0].IsSelected = true;
 Check(choices.Count(c => c.IsSelected) == 2, "selection persists across filtering");
 Console.WriteLine("App selection checks passed.");
 
-Check(QihooIdentification.IsCandidate("360安全卫士 版本 1"), "360 security candidate");
-Check(QihooIdentification.IsCandidate("360 Total Security"), "360 English candidate");
-Check(!QihooIdentification.IsCandidate("My 360安全卫士 unrelated"), "substring is not product name");
-Check(!QihooIdentification.IsCandidate("360度全景工具"), "unrelated 360 app excluded");
-Console.WriteLine("360 candidate checks passed.");
 
 var productCode = "{AAD3D77A-7476-469F-ADF4-04424124E91D}";
 Check(MsiUninstall.ProductCode(productCode, 1) == Guid.Parse(productCode), "registered MSI product recognized");

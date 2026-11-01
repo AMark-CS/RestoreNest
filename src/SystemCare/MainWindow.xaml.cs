@@ -34,7 +34,6 @@ public partial class MainWindow : Window
         AppsTab.Header = T("软件管理", "Apps"); BackupTab.Header = T("系统备份", "Backup"); RecoveryTab.Header = T("恢复与启动", "Recovery & boot");
         NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version");
         AppsNotice.Text = T("卸载前会尝试创建系统还原点；卸载后列出残留候选，由你确认再删除。", "A restore point is attempted before uninstalling; leftover candidates are listed for you to confirm.");
-        QihooFilter.Content = T("仅显示 360 候选", "360 candidates only");
         ReviewButton.Content = T("检查所选软件", "Review selection");
         BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
         BackupNotice.Text = T("使用 Windows 备份创建系统映像，需要管理员权限和非系统 NTFS 卷。当前仅支持卷根目录，已有 WindowsImageBackup 的卷不会使用。尚未验证恢复时同一物理磁盘其他分区能否保留；建议使用独立磁盘。应用内恢复尚未完成。", "Create a system image with Windows Backup. Administrator access and a non-system NTFS volume are required. Only drive roots are supported, and volumes containing WindowsImageBackup are refused. Preservation of other partitions on the same physical disk during recovery is unverified; a separate disk is recommended. In-app recovery is not ready.");
@@ -52,11 +51,10 @@ public partial class MainWindow : Window
     }
 
     private void SearchChanged(object sender, TextChangedEventArgs e) { if (IsInitialized) FilterApps(); }
-    private void QihooFilterChanged(object sender, RoutedEventArgs e) { if (IsInitialized) FilterApps(); }
     private void FilterApps()
     {
         var query = Search.Text.Trim();
-        AppList.ItemsSource = apps.Where(a => (QihooFilter.IsChecked != true || QihooIdentification.IsCandidate(a.App.Name)) && (a.App.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.App.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
+        AppList.ItemsSource = apps.Where(a => (a.App.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || a.App.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase))).ToList();
     }
 
     private void SelectionChanged(object sender, RoutedEventArgs e)
