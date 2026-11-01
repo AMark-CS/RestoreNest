@@ -12,8 +12,11 @@ public record RestorePointInfo(string Id, string Name, string CreatedUtc, double
 
 public static class RestorePoints
 {
-    public static string ToolsDirectory => System.IO.Path.Combine(AppContext.BaseDirectory, "tools");
+    public static string ToolsDirectory => Environment.GetEnvironmentVariable("RN_TOOLS") is { Length: > 0 } overridden ? overridden : System.IO.Path.Combine(AppContext.BaseDirectory, "tools");
     public static string WimlibPath => System.IO.Path.Combine(ToolsDirectory, "bin", "wimlib-imagex.exe");
+
+    // -Verbose also prints PowerShell module import chatter (hundreds of "Exporting function" lines); the UI log hides it.
+    public static bool IsModuleNoise(string line) => System.Text.RegularExpressions.Regex.IsMatch(line, @"^VERBOSE: (Exporting|Importing|Loading|Populating) ");
 
     public static List<RestorePointInfo> ParseList(string json)
     {

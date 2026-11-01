@@ -67,3 +67,4 @@ Check(RestorePoints.ParseList("").Count == 0 && RestorePoints.ParseList("not jso
 var rpArgs = RestorePoints.BuildScriptArguments("New-RestorePoint.ps1", new[] { "-Destination", "D:; calc" });
 Check(rpArgs[^1] == "D:; calc" && rpArgs.Contains("-File"), "script arguments stay separate");
 Console.WriteLine("Restore point UI checks passed.");
+Check(RestorePoints.IsModuleNoise("VERBOSE: Exporting function 'Get-Disk'.") && !RestorePoints.IsModuleNoise("VERBOSE: Captured in 5 s"), "module import noise filtered from log");

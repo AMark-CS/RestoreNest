@@ -50,6 +50,7 @@ public partial class MainWindow
 
     private void RpLog(string line) => Dispatcher.BeginInvoke(() =>
     {
+        if (RestorePoints.IsModuleNoise(line)) return;
         if (RpOutput.Text.Length > 20000) RpOutput.Text = RpOutput.Text[^10000..];
         RpOutput.AppendText(line + "\n"); RpOutput.ScrollToEnd();
     });
