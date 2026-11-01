@@ -33,6 +33,11 @@ if (-not (Test-Path -LiteralPath $WimlibPath -PathType Leaf)) { throw "wimlib-im
 
 $systemVolume = Get-Volume -DriveLetter $SystemDrive
 $used = [long]($systemVolume.Size - $systemVolume.SizeRemaining)
+# Reclaim space from interrupted earlier captures before checking free space (skipped on a dry run: it must not delete anything).
+if (-not $DryRun -and $Destination -match '\A[A-Za-z]:') {
+    $guess = if ($Destination.TrimEnd('\').Length -le 2) { Join-Path $Destination 'RestoreNest' } else { $Destination.TrimEnd('\') }
+    foreach ($gone in @(Remove-RnStalePartials -Root $guess)) { Write-Verbose "Removed stale partial capture: $gone" }
+}
 # LZX typically shrinks well, but demand 60% of used space as a conservative floor; wimlib will fail loudly if still short.
 $root = Resolve-RnDestination -Destination $Destination -SystemDrive $SystemDrive -RequiredBytes ([long]($used * 0.6))
 $source = Get-RnVolumeIdentity -DriveLetter $SystemDrive

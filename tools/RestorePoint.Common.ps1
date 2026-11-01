@@ -62,6 +62,24 @@ function Get-RnWimlibCaptureArguments {
     $arguments + @("--compress=$Compression", '--check', "--config=$ConfigPath")
 }
 
+# An interrupted capture (power loss, forced shutdown) leaves <id>.partial behind. It is never listed as a restore point, but it
+# holds gigabytes. Remove only ones nobody has written to for a while, so a capture running right now is never touched.
+function Remove-RnStalePartials {
+    param([Parameter(Mandatory)][string]$Root, [double]$OlderThanHours = 2)
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return @() }
+    $removed = @()
+    foreach ($dir in Get-ChildItem -LiteralPath $Root -Directory -Filter '*.partial') {
+        if ($dir.Name -notmatch '\A\d{8}-\d{6}\.partial\z') { continue }
+        $newest = $dir.LastWriteTime
+        foreach ($f in Get-ChildItem -LiteralPath $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue) { if ($f.LastWriteTime -gt $newest) { $newest = $f.LastWriteTime } }
+        if (((Get-Date) - $newest).TotalHours -ge $OlderThanHours) {
+            Remove-Item -LiteralPath $dir.FullName -Recurse -Force
+            $removed += $dir.FullName
+        }
+    }
+    $removed
+}
+
 function New-RnRestorePointId { param([datetime]$Now = (Get-Date)) $Now.ToString('yyyyMMdd-HHmmss') }
 
 function Test-RnRestorePointId { param([string]$Id) [bool]($Id -match $script:RnIdPattern) }

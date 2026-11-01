@@ -1,4 +1,4 @@
-# Host-safe tests: wimlib is replaced by a stub, so no snapshot is taken and nothing is captured from the live system.
+﻿# Host-safe tests: wimlib is replaced by a stub, so no snapshot is taken and nothing is captured from the live system.
 $ErrorActionPreference = 'Stop'
 function Check($ok, $name) { if (-not $ok) { throw "FAILED: $name" } }
 function Throws($block, $name) { try { & $block; throw 'no error' } catch { if ($_.Exception.Message -eq 'no error') { throw "FAILED (accepted): $name" } } }
@@ -60,6 +60,17 @@ try {
     Throws { & (Join-Path $tools 'New-RestorePoint.ps1') -Destination $dest -WimlibPath $stub -SkipAdminCheck } 'failed capture reported'
     Remove-Item Env:\RN_STUB_FAIL
     Check (@(Get-ChildItem $dest -Directory).Count -eq 2) 'failed capture leaves no folder'
+
+    # Stale partial captures are reclaimed; a fresh one (capture in progress) and real restore points are left alone
+    $staleDir = Join-Path $dest '20250101-000000.partial'; $freshDir = Join-Path $dest '20990101-000000.partial'
+    $null = New-Item -ItemType Directory $staleDir, $freshDir
+    Set-Content (Join-Path $staleDir 'system.wim') 'x'; Set-Content (Join-Path $freshDir 'system.wim') 'x'
+    (Get-Item $staleDir).LastWriteTime = (Get-Date).AddHours(-5); (Get-Item (Join-Path $staleDir 'system.wim')).LastWriteTime = (Get-Date).AddHours(-5)
+    $null = Remove-RnStalePartials -Root $dest
+    Check (-not (Test-Path $staleDir)) 'stale partial removed'
+    Check (Test-Path $freshDir) 'fresh partial kept'
+    Check (@(Get-RnRestorePoints -Root $dest -WarningAction SilentlyContinue).Count -eq 2) 'restore points untouched by cleanup'
+    Remove-Item $freshDir -Recurse -Force
 
     # Malformed meta is skipped, not trusted
     $bad = Join-Path $dest '20260101-000000'
