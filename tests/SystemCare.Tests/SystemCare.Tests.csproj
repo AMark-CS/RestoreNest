@@ -6,15 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../src/SystemCare/BackupLocation.cs" Link="BackupLocation.cs" />
     <Compile Include="../../src/SystemCare/RemovalReview.cs" Link="RemovalReview.cs" />
     <Compile Include="../../src/SystemCare/AppChoice.cs" Link="AppChoice.cs" />
     <Compile Include="../../src/SystemCare/InstalledApps.cs" Link="InstalledApps.cs" />
     <Compile Include="../../src/SystemCare/MsiUninstall.cs" Link="MsiUninstall.cs" />
-    <Compile Include="../../src/SystemCare/BackupVerification.cs" Link="BackupVerification.cs" />
-    <Compile Include="../../src/SystemCare/WbadminBackup.cs" Link="WbadminBackup.cs" />
-    <Compile Include="../../src/SystemCare/RecoveryCatalog.cs" Link="RecoveryCatalog.cs" />
-    <Compile Include="../../src/SystemCare/RecoveryTask.cs" Link="RecoveryTask.cs" />
     <Compile Include="../../src/SystemCare/DiskOverview.cs" Link="DiskOverview.cs" />
     <Compile Include="../../src/SystemCare/RestorePoints.cs" Link="RestorePoints.cs" />
     <Compile Include="../../src/SystemCare/Uninstaller.cs" Link="Uninstaller.cs" />

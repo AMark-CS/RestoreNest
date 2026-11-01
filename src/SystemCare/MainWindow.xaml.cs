@@ -7,8 +7,7 @@ namespace SystemCare;
 public partial class MainWindow : Window
 {
     private List<AppChoice> apps = new();
-    private bool backupRunning;
-    private bool English => LanguagePicker.SelectedIndex == 1;
+    private bool English;
     private string T(string zh, string en) => English ? en : zh;
 
     public MainWindow()
@@ -17,36 +16,40 @@ public partial class MainWindow : Window
         RefreshText();
         RefreshDisks();
         _ = LoadAppsAsync();
+        _ = RpLoadAsync(false);
     }
 
-    private void LanguageChanged(object sender, SelectionChangedEventArgs e)
+    private void LanguageClick(object sender, RoutedEventArgs e)
     {
-        if (IsInitialized) RefreshText();
+        English = !English;
+        RefreshText(); RefreshDisks();
+    }
+
+    private void NavChanged(object sender, RoutedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        RestorePage.Visibility = NavRestore.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        AppsPage.Visibility = NavApps.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        DisksPage.Visibility = NavDisks.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void RefreshText()
     {
-        Intro.Text = T("系统维护与恢复 · 开发预览版", "System maintenance and recovery · development preview");
+        LanguageButton.Content = English ? "简体中文" : "English";
+        Tagline.Text = T("系统维护与恢复", "Maintenance & recovery");
+        VersionText.Text = "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0") + T(" · 预览版", " · preview");
+        NavRestore.Content = T("还原点", "Restore points"); NavApps.Content = T("软件管理", "Apps"); NavDisks.Content = T("磁盘概览", "Disks");
         RefreshRestoreText();
-        DisksTab.Header = T("磁盘概览", "Disks"); DisksTitle.Text = T("各磁盘空间概览", "Disk space overview"); RefreshDisksButton.Content = T("刷新", "Refresh");
-        DiskNameColumn.Header = T("磁盘", "Drive"); DiskFormatColumn.Header = T("格式", "Format"); DiskUsageColumn.Header = T("使用率", "Usage"); DiskUsedColumn.Header = T("已用 / 总量", "Used / total"); DiskFreeColumn.Header = T("可用", "Free"); SizeColumn.Header = T("大小", "Size");
-        UninstallButton.Content = T("卸载所选软件", "Uninstall selected");
-        AppsTab.Header = T("软件管理", "Apps"); BackupTab.Header = T("系统备份", "Backup"); RecoveryTab.Header = T("恢复与启动", "Recovery & boot");
-        NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version");
-        AppsNotice.Text = T("卸载前会尝试创建系统还原点；卸载后列出残留候选，由你确认再删除。", "A restore point is attempted before uninstalling; leftover candidates are listed for you to confirm.");
-        ReviewButton.Content = T("检查所选软件", "Review selection");
-        BackupTitle.Text = T("选择备份位置", "Choose a backup location"); PathLabel.Text = T("保存目录", "Destination folder"); Browse.Content = T("浏览…", "Browse…");
-        BackupNotice.Text = T("使用 Windows 备份创建系统映像，需要管理员权限和非系统 NTFS 卷。当前仅支持卷根目录，已有 WindowsImageBackup 的卷不会使用。尚未验证恢复时同一物理磁盘其他分区能否保留；建议使用独立磁盘。应用内恢复尚未完成。", "Create a system image with Windows Backup. Administrator access and a non-system NTFS volume are required. Only drive roots are supported, and volumes containing WindowsImageBackup are refused. Preservation of other partitions on the same physical disk during recovery is unverified; a separate disk is recommended. In-app recovery is not ready.");
-        StartBackupButton.Content = T("创建系统备份", "Create system backup");
-        System.Windows.Automation.AutomationProperties.SetName(BackupProgress, T("备份进行中", "Backup in progress"));
-        RecoveryNotice.Text = T("恢复引擎、启动菜单和 USB 恢复介质尚未实现，当前版本不能恢复系统。", "The recovery engine, boot menu and USB recovery media are not implemented. This version cannot restore a system.");
-        CatalogButton.Content = T("查询磁盘上的备份", "List backups on drive");
-        CatalogDrive.ToolTip = T("输入备份所在的盘符根目录，例如 D:\\。查询可能需要管理员权限。", "Enter the backup drive root, for example D:\\. Listing may require administrator privileges.");
-        RecoveryVersionsLabel.Text = T("备份版本（仅供查看）", "Backup version (view only)");
-        ExportRecoveryButton.Content = T("导出实验性恢复任务…", "Export experimental recovery task…");
-        RecoveryVersions.ToolTip = T("选择查询到的备份版本；选择本身不会恢复系统。", "Select a discovered backup version; selecting it does not restore the system.");
-        VerifyButton.Content = T("校验备份清单…", "Verify backup manifest…");
-        CheckPath();
+
+        AppsTitle.Text = T("软件管理", "Apps");
+        AppsSubtitle.Text = T("勾选要卸载的软件。卸载前会尝试创建系统还原点；卸载后列出残留候选，由你确认再删除。", "Tick the apps to remove. A system restore point is attempted first; leftover candidates are listed for you to confirm.");
+        Search.ToolTip = T("按名称或发布者搜索", "Search by name or publisher");
+        NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version"); SizeColumn.Header = T("大小", "Size");
+        UninstallButton.Content = T("卸载所选软件", "Uninstall selected"); ReviewButton.Content = T("检查所选软件", "Review selection");
+
+        DisksTitle.Text = T("磁盘概览", "Disks"); DisksSubtitle.Text = T("各磁盘的已用空间与剩余空间", "Used and free space of each drive");
+        RefreshDisksButton.Content = T("刷新", "Refresh");
+        DiskVolume.FreeWord = T("可用", "free");
         UpdateSelectionCount();
     }
 
@@ -65,182 +68,9 @@ public partial class MainWindow : Window
     private void UpdateSelectionCount()
     {
         var count = apps.Count(choice => choice.IsSelected);
-        SelectionCount.Text = T($"已勾选 {count} 项（包括搜索结果之外的项目）", $"{count} selected (including items outside the search results)");
-    }
-
-    private void PathChanged(object sender, TextChangedEventArgs e) { if (IsInitialized) CheckPath(); }
-    private void CheckPath()
-    {
-        var path = BackupPath.Text.Trim();
-        var error = BackupLocation.Validate(path, Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? @"C:\");
-        if (error is null)
-        {
-            try { WbadminBackup.BuildArguments(path, Environment.GetFolderPath(Environment.SpecialFolder.Windows)); }
-            catch (ArgumentException) { error = "root"; }
-        }
-        PathStatus.Text = error switch
-        {
-            "system" => T("不能使用 Windows 所在分区。", "The Windows partition cannot be used."),
-            "network" => T("当前不支持网络路径。", "Network paths are not supported."),
-            "absolute" => T("请选择完整的本地路径。", "Choose an absolute local path."),
-            "root" => T("当前仅支持磁盘根目录，例如 D:\\。", "Only drive roots such as D:\\ are currently supported."),
-            _ => DescribeDrive(path)
-        };
-    }
-
-    private string DescribeDrive(string path)
-    {
-        try
-        {
-            var drive = new DriveInfo(Path.GetPathRoot(path)!);
-            if (!drive.IsReady) return T("所选磁盘不可用。", "The selected drive is unavailable.");
-            var free = drive.AvailableFreeSpace / (1024.0 * 1024 * 1024);
-            return T($"可用空间：{free:F1} GiB · 文件系统：{drive.DriveFormat}。权限、实际空间需求和恢复范围尚未验证。", $"Available: {free:F1} GiB · File system: {drive.DriveFormat}. Permissions, required space and restore scope are not yet verified.");
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
-        {
-            return T("无法读取所选磁盘的信息。", "Unable to read the selected drive information.");
-        }
-    }
-
-    private void BrowseClick(object sender, RoutedEventArgs e)
-    {
-        using var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = T("选择备份文件夹", "Choose a backup folder"), UseDescriptionForTitle = true };
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) BackupPath.Text = dialog.SelectedPath;
-    }
-
-    private async void StartBackupClick(object sender, RoutedEventArgs e)
-    {
-        var destination = BackupPath.Text.Trim();
-        try { WbadminBackup.BuildArguments(destination, Environment.GetFolderPath(Environment.SpecialFolder.Windows)); }
-        catch (ArgumentException)
-        {
-            System.Windows.MessageBox.Show(this, T("请选择非系统卷的本地磁盘根目录，例如 D:\\。", "Choose a local drive root on a non-system volume, such as D:\\."), "RestoreNest");
-            return;
-        }
-        var confirm = System.Windows.MessageBox.Show(this,
-            T($"将系统关键卷备份到 {destination}。恢复时同一物理磁盘的其他分区能否保留尚未验证；当前应用还不能执行恢复。备份耗时取决于数据和磁盘速度。继续吗？", $"Back up the critical system volumes to {destination}. Preservation of other partitions on the same physical disk during recovery is unverified, and recovery is not yet available in this app. Duration depends on data and disk speed. Continue?"),
-            "RestoreNest", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.Yes) return;
-        backupRunning = true;
-        StartBackupButton.IsEnabled = false; Browse.IsEnabled = false; BackupPath.IsEnabled = false;
-        BackupProgress.Visibility = Visibility.Visible;
-        BackupOutput.Text = T("正在启动 Windows 备份…\n", "Starting Windows Backup…\n");
-        try
-        {
-            var exitCode = await WbadminBackup.RunAsync(destination, line => Dispatcher.BeginInvoke(() =>
-            {
-                if (BackupOutput.Text.Length > 20000) BackupOutput.Text = BackupOutput.Text[^10000..];
-                BackupOutput.AppendText(line + "\n");
-                BackupOutput.ScrollToEnd();
-            }));
-            BackupOutput.AppendText(exitCode == 0
-                ? T("\nWindows 备份已完成。请使用可用的恢复工具验证该备份。", "\nWindows Backup completed. Verify the backup with an available recovery tool.")
-                : T($"\n备份失败，退出代码 {exitCode}。", $"\nBackup failed, exit code {exitCode}."));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            BackupOutput.AppendText(T("\n访问被拒绝：请以管理员身份运行，并检查目标磁盘权限。", "\nAccess denied: run as administrator and check permissions on the destination."));
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
-        {
-            BackupOutput.AppendText(T("\n无法启动或完成备份：", "\nUnable to start or complete backup: ") + ex.Message);
-        }
-        finally
-        {
-            backupRunning = false;
-            BackupProgress.Visibility = Visibility.Collapsed;
-            StartBackupButton.IsEnabled = true; Browse.IsEnabled = true; BackupPath.IsEnabled = true;
-        }
-    }
-
-    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
-    {
-        if (backupRunning)
-        {
-            e.Cancel = true;
-            System.Windows.MessageBox.Show(this, T("备份正在进行，请等待完成后再关闭。", "A backup is running. Wait for it to finish before closing."), "RestoreNest");
-        }
-        base.OnClosing(e);
-    }
-
-    private async void VerifyClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "JSON (*.json)|*.json", Title = T("选择备份清单", "Choose a backup manifest") };
-        if (dialog.ShowDialog(this) != true) return;
-        VerifyButton.IsEnabled = false;
-        VerifyStatus.Text = T("正在校验文件…", "Verifying files…");
-        try
-        {
-            var valid = await Task.Run(() =>
-            {
-                using var stream = new FileStream(dialog.FileName, FileMode.Open, FileAccess.Read, FileShare.Read);
-                if (stream.Length > 2 * 1024 * 1024) return false;
-                var manifest = System.Text.Json.JsonSerializer.Deserialize<BackupManifest>(stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return manifest is not null && BackupVerification.Verify(Path.GetDirectoryName(dialog.FileName)!, manifest);
-            });
-            VerifyStatus.Text = valid
-                ? T("清单中的文件校验通过；这不代表备份可启动或可恢复。", "Listed files passed verification; this does not prove the backup can boot or be restored.")
-                : T("校验失败：清单无效、文件缺失或内容不匹配。", "Verification failed: invalid manifest, missing file or content mismatch.");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or System.Security.SecurityException)
-        {
-            VerifyStatus.Text = T("无法读取或解析清单。", "Unable to read or parse the manifest.");
-        }
-        finally { VerifyButton.IsEnabled = true; }
-    }
-
-    private async void CatalogClick(object sender, RoutedEventArgs e)
-    {
-        CatalogButton.IsEnabled = false;
-        CatalogDrive.IsEnabled = false;
-        RecoveryVersions.ItemsSource = null;
-        CatalogOutput.Text = T("正在查询 Windows 备份…", "Listing Windows backups…");
-        try
-        {
-            var result = await RecoveryCatalog.ReadAsync(CatalogDrive.Text.Trim());
-            var prefix = result.ExitCode == 0 ? "" : T($"查询失败（退出代码 {result.ExitCode}）。可能需要管理员权限。\n", $"Query failed (exit code {result.ExitCode}). Administrator privileges may be required.\n");
-            CatalogOutput.Text = prefix + result.Output;
-            if (result.ExitCode == 0) RecoveryVersions.ItemsSource = RecoveryCatalog.ParseVersions(result.Output);
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
-        {
-            CatalogOutput.Text = T("无法查询。请输入本地磁盘根目录，例如 D:\\。", "Unable to query. Enter a local drive root such as D:\\.") + "\n" + ex.Message;
-        }
-        finally { CatalogDrive.IsEnabled = true; CatalogButton.IsEnabled = true; }
-    }
-
-    private void CatalogDriveChanged(object sender, TextChangedEventArgs e)
-    {
-        if (!IsInitialized) return;
-        RecoveryVersions.ItemsSource = null;
-        CatalogOutput.Clear();
-    }
-
-    private async void ExportRecoveryClick(object sender, RoutedEventArgs e)
-    {
-        if (RecoveryVersions.SelectedItem is not string version)
-        {
-            System.Windows.MessageBox.Show(this, T("请先查询并选择一个备份版本。", "Query and select a backup version first."), "RestoreNest");
-            return;
-        }
-        var backupRoot = CatalogDrive.Text.Trim();
-        ExportRecoveryButton.IsEnabled = false;
-        try
-        {
-            var windowsRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
-            var task = new RecoveryTask(1, version, Environment.MachineName, await RecoveryTask.IdentifyAsync(backupRoot), await RecoveryTask.IdentifyAsync(windowsRoot));
-            task.Validate();
-            var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "JSON (*.json)|*.json", FileName = "restorenest-recovery.json" };
-            if (dialog.ShowDialog(this) != true) return;
-            File.WriteAllText(dialog.FileName, System.Text.Json.JsonSerializer.Serialize(task, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-            CatalogOutput.Text = T("恢复任务已导出，已记录 GPT 磁盘和分区标识。可用 tools/Test-RecoveryTask.ps1 只读检查身份；恢复执行器尚未接通。", "Recovery task exported with GPT disk and partition identities. tools/Test-RecoveryTask.ps1 can check identities without writing; recovery execution is not connected yet.");
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
-        {
-            CatalogOutput.Text = T("无法导出恢复任务：", "Unable to export recovery task: ") + ex.Message;
-        }
-        finally { ExportRecoveryButton.IsEnabled = true; }
+        SelectionCount.Text = T($"已勾选 {count} 项", $"{count} selected");
+        if (!apps.Any()) return;
+        AppsNotice.Text = T($"共 {apps.Count} 个软件（已勾选项目不受搜索过滤影响）", $"{apps.Count} apps (selection is kept while you search)");
     }
 
     private void ReviewClick(object sender, RoutedEventArgs e)

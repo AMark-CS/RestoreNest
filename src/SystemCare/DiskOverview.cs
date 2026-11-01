@@ -8,6 +8,9 @@ public record DiskVolume(string Root, string Label, string Format, long TotalByt
     public double UsedPercent => TotalBytes <= 0 ? 0 : 100.0 * UsedBytes / TotalBytes;
     public string Summary => $"{FormatBytes(UsedBytes)} / {FormatBytes(TotalBytes)}";
     public string FreeText => FormatBytes(FreeBytes);
+    public bool IsCritical => UsedPercent >= 90;
+    public static string FreeWord { get; set; } = "free";
+    public string FreeLabel => IsCritical ? FreeWord + " ⚠" : FreeWord;
     public string Display => string.IsNullOrEmpty(Label) ? Root : $"{Root} {Label}";
 
     public static string FormatBytes(long bytes) => DiskOverview.FormatBytes(bytes);
