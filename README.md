@@ -11,16 +11,18 @@ Windows 10/11 maintenance tool: **manage installed software and disk space, and 
 | Apps | List registry and Store apps with size, publisher, version; search; multi-select | Built, unit-tested, app launch smoke-tested |
 | Apps | Uninstall selected (MSI, registered uninstallers, Store apps); tries a Windows restore point first; lists leftover-folder candidates for you to confirm | Built and unit-tested; **not yet exercised against real installers in a VM** |
 | Disks | Per-drive total / used / free overview | Built, tested |
-| Restore points | Create a VSS-consistent WIM image of the Windows partition to **any non-Windows NTFS drive or folder (D:, E:, same physical disk allowed)**; several points coexist; SHA-256 + `wimlib verify` | Script logic tested with a stub; wimlib capture/apply round trip verified on scratch folders; **a real VSS capture of a Windows system has not been run** |
-| Boot menu | `Install-BootEntry.ps1` adds a "RestoreNest Recovery" WinPE ramdisk entry (default OS unchanged, BCD exported first, removable) | Command generation tested in dry run; **never run against a real BCD or booted** |
-| Restore | `Restore.ps1` (runs in WinPE): verifies the image, resolves the target by GPT GUID, refuses the partition holding the backup, dry-run by default, formats only the Windows partition | Planning logic tested; **the write path (format / apply / bcdboot) has never been run** |
-| WinPE | `Build-WinPE.ps1` builds the recovery image with the Windows ADK | Syntax-checked only; needs the ADK, **not run** |
+| Restore points | Create a WIM image of the Windows partition (VSS snapshot online, or offline from WinPE) to **any non-Windows NTFS drive or folder (D:, E:, same physical disk allowed)**; several points coexist; SHA-256 + `wimlib verify` | **VM-verified offline** (4.5 GiB image, hashes OK). Script logic unit-tested. **The online VSS capture has not been run** |
+| Boot menu | `Install-BootEntry.ps1` adds a "RestoreNest Recovery" WinPE ramdisk entry (default OS and menu timeout preserved, BCD backed up first, removable) | **VM-verified**: install, boot into the recovery WinPE, remove. Not tested: keyboard selection in the menu, Secure Boot, BitLocker |
+| Restore | `Restore.ps1` (runs in WinPE): verifies the image, resolves the target by GPT GUID, refuses the partition holding the backup, dry-run by default, formats only the Windows partition | **VM-verified once per scenario** (Windows 10, UEFI, same-disk D:): data partition hashes and all partition GUIDs/sizes unchanged, backup still valid, a deliberately unbootable system booted to the lock screen afterwards |
+| WinPE | `Build-WinPE.ps1` builds the recovery image with the Windows ADK | Syntax-checked only; the VM tests used a pre-built WinPE with the same components. **Not run** |
+
+Details, durations (QEMU emulation, not hardware speed), the bugs these runs found, and what is still untested: [docs/vm-validation.md](docs/vm-validation.md).
 
 The older `wbadmin` backup page and the read-only recovery-task export remain as an experimental alternative (separate-disk only).
 
 ## Status: what "unverified" means
 
-The restore path is the dangerous part. Until it has been exercised end to end in a disposable VM with `D:` data hashed before and after, treat **creating** restore points as the usable feature and **restoring** as experimental. Never run `Restore.ps1 -Execute` on a machine you cannot rebuild. See [docs/restore-point-engine.md](docs/restore-point-engine.md) and the VM acceptance list in [docs/backup-engine.md](docs/backup-engine.md).
+The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image, offline, without Secure Boot or BitLocker, and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md); acceptance list: [docs/backup-engine.md](docs/backup-engine.md).
 
 ## Build and run
 
@@ -39,7 +41,7 @@ Lab helpers for a Hyper-V test VM are in `tools/lab`.
 
 ## 安全说明
 
-0.1.0 是首个可运行预览版。软件列表、卸载、磁盘概览和“创建还原点”可以使用（卸载与真实系统映像尚未在虚拟机中完整验证）；**还原（启动菜单 + WinPE）从未在虚拟机中实际写盘验证，请勿用于重要数据**。还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。
+0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载尚未用真实安装包在虚拟机中验证）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**但仅限一个镜像、离线、无 Secure Boot、无 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。
 
 ## Legacy: experimental manifest verification
 

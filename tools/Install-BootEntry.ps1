@@ -46,6 +46,7 @@ if ($Remove) {
     $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
     if ($state.entry -notmatch '\A\{[0-9a-fA-F-]{36}\}\z') { throw 'Recorded entry id is invalid.' }
     [void](Invoke-Bcd @('/delete', $state.entry, '/cleanup'))
+    if ($state.PSObject.Properties['timeoutChanged'] -and $state.timeoutChanged -and $null -ne $state.originalTimeout) { [void](Invoke-Bcd @('/timeout', [string]$state.originalTimeout)) }
     if (-not $DryRun) { Remove-Item -LiteralPath $stateFile -Force }
     Write-Host 'Boot entry removed.'
     return
@@ -67,7 +68,8 @@ if (-not $DryRun) {
         if ([IO.Path]::GetFullPath($pair[0]) -ine [IO.Path]::GetFullPath($dest)) { Copy-Item -LiteralPath $pair[0] -Destination $dest -Force }
     }
     $backup = Join-Path $bootDir ('bcd-backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.bcd')
-    [void](Invoke-Bcd @('/export', $backup))
+    # `bcdedit /store <file> /export` is rejected by bcdedit; an offline store is just a file, so copy it.
+    if ($Store) { Copy-Item -LiteralPath $Store -Destination $backup -Force } else { [void](Invoke-Bcd @('/export', $backup)) }
 }
 $existing = if ($DryRun) { '' } else { & bcdedit @storeArgs /enum '{ramdiskoptions}' 2>&1 | Out-String }
 if ($existing -notmatch 'ramdisksdipath') { [void](Invoke-Bcd @('/create', '{ramdiskoptions}', '/d', '"RestoreNest ramdisk options"')) }
@@ -80,8 +82,13 @@ foreach ($pair in @(@('device', $plan.Device), @('osdevice', $plan.Device), @('p
     [void](Invoke-Bcd @('/set', $entry, $pair[0], $pair[1]))
 }
 [void](Invoke-Bcd @('/displayorder', $entry, '/addlast'))
-[void](Invoke-Bcd @('/timeout', '10'))
+# The menu only appears with a non-zero timeout. Leave an existing timeout alone; if it is 0 (menu hidden) enable 10 s and
+# remember the original so -Remove can put it back.
+$timeoutChanged = $false; $originalTimeout = $null
+$mgr = if ($DryRun) { '' } else { & bcdedit @storeArgs /enum '{bootmgr}' 2>&1 | Out-String }
+if ($mgr -match '(?m)^timeout\s+(\d+)') { $originalTimeout = [int]$Matches[1] }
+if ($DryRun -or $originalTimeout -eq 0) { [void](Invoke-Bcd @('/timeout', '10')); $timeoutChanged = $true }
 if (-not $DryRun) {
-    @{ entry = $entry; created = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
+    @{ entry = $entry; created = (Get-Date).ToUniversalTime().ToString('o'); timeoutChanged = $timeoutChanged; originalTimeout = $originalTimeout } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
     Write-Host "Boot entry $entry installed. Default OS unchanged."
 }

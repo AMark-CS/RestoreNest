@@ -61,7 +61,8 @@ $backupPartition = @($partitions | Where-Object { $_.DriveLetter -ieq $backupLet
 if ($backupPartition.Count -ne 1) { throw "Cannot identify the partition holding the backup ($backupLetter`:)." }
 $resolved = Resolve-RnRestoreTarget -Meta $meta -Partitions $partitions -BackupPartitionGuid $backupPartition[0].Guid
 $target = $resolved.Target; $esp = $resolved.Esp
-$bl = (& manage-bde.exe -status 2>$null | Out-String)
+$bl = ''
+try { $bl = (& manage-bde.exe -status 2>$null | Out-String) } catch { Write-Warning 'manage-bde is not available; BitLocker state could not be checked.' }
 if ($bl -match 'Conversion Status:\s+(Fully|Used Space Only) Encrypted') { Write-Warning 'An encrypted volume is present; formatting the target removes its encryption.' }
 
 Write-Host ''
@@ -94,10 +95,18 @@ try {
     & bcdboot.exe "$tl`:\Windows" /s "$($ep.DriveLetter):" /f UEFI
     if ($LASTEXITCODE -ne 0) { throw "bcdboot failed ($LASTEXITCODE)." }
 
-    # bcdboot may rewrite the store; put the recovery entry back if one was installed.
-    if (Test-Path -LiteralPath (Join-Path $selected.Root 'boot\bootentry.json')) {
-        Remove-Item -LiteralPath (Join-Path $selected.Root 'boot\bootentry.json') -Force
-        & (Join-Path $PSScriptRoot 'Install-BootEntry.ps1') -Root $selected.Root -BootWim (Join-Path $selected.Root 'boot\boot.wim') -BootSdi (Join-Path $selected.Root 'boot\boot.sdi') -Store "$($ep.DriveLetter):\EFI\Microsoft\Boot\BCD"
+    # bcdboot normally keeps the existing store (VM test: the entry survived). Only if the recorded entry is gone, re-create it;
+    # re-creating unconditionally left two identical entries.
+    $stateFile = Join-Path $selected.Root 'boot\bootentry.json'
+    if (Test-Path -LiteralPath $stateFile) {
+        $store = "$($ep.DriveLetter):\EFI\Microsoft\Boot\BCD"
+        $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+        $present = (& bcdedit.exe /store $store /enum all 2>$null | Out-String) -match [regex]::Escape($state.entry)
+        if ($present) { Write-Host 'Recovery boot entry is still present.' }
+        else {
+            Remove-Item -LiteralPath $stateFile -Force
+            & (Join-Path $PSScriptRoot 'Install-BootEntry.ps1') -Root $selected.Root -BootWim (Join-Path $selected.Root 'boot\boot.wim') -BootSdi (Join-Path $selected.Root 'boot\boot.sdi') -Store $store
+        }
     }
     Write-Host 'Restore finished. Restart the computer.'
 }

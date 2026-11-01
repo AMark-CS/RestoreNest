@@ -17,7 +17,10 @@ param(
     [string]$WimlibPath = (Join-Path $PSScriptRoot 'bin\wimlib-imagex.exe'),
     [string]$SystemDrive = $env:SystemDrive.TrimEnd(':'),
     [switch]$DryRun,
-    [switch]$SkipAdminCheck
+    [switch]$SkipAdminCheck,
+    # Offline capture (e.g. from WinPE, where the Windows volume is not in use and VSS does not exist).
+    [switch]$NoSnapshot,
+    [ValidateSet('LZX', 'XPRESS', 'LZMS', 'None')][string]$Compression = 'LZX'
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RestorePoint.Common.ps1')
@@ -45,7 +48,7 @@ New-Item -ItemType Directory -Path $partial -Force | Out-Null
 try {
     $config = Join-Path $partial 'capture.ini'
     Set-Content -LiteralPath $config -Value (Get-RnCaptureConfig) -Encoding Unicode
-    $arguments = Get-RnWimlibCaptureArguments -SourceDrive $SystemDrive -WimPath $plan.Wim -ImageName "RestoreNest $id" -ConfigPath $config
+    $arguments = Get-RnWimlibCaptureArguments -SourceDrive $SystemDrive -WimPath $plan.Wim -ImageName "RestoreNest $id" -ConfigPath $config -Compression $Compression -NoSnapshot:$NoSnapshot
     $watch = [Diagnostics.Stopwatch]::StartNew()
     & $WimlibPath @arguments
     if ($LASTEXITCODE -ne 0) { throw "wimlib capture failed (exit $LASTEXITCODE)." }

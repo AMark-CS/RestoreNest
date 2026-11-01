@@ -55,8 +55,11 @@ function Get-RnCaptureConfig {
 }
 
 function Get-RnWimlibCaptureArguments {
-    param([Parameter(Mandatory)][string]$SourceDrive, [Parameter(Mandatory)][string]$WimPath, [Parameter(Mandatory)][string]$ImageName, [Parameter(Mandatory)][string]$ConfigPath)
-    @('capture', ($SourceDrive.TrimEnd('\', ':') + ':\'), $WimPath, $ImageName, '--snapshot', '--compress=LZX', '--check', "--config=$ConfigPath")
+    param([Parameter(Mandatory)][string]$SourceDrive, [Parameter(Mandatory)][string]$WimPath, [Parameter(Mandatory)][string]$ImageName, [Parameter(Mandatory)][string]$ConfigPath,
+        [ValidateSet('LZX', 'XPRESS', 'LZMS', 'None')][string]$Compression = 'LZX', [switch]$NoSnapshot)
+    $arguments = @('capture', ($SourceDrive.TrimEnd('\', ':') + ':\'), $WimPath, $ImageName)
+    if (-not $NoSnapshot) { $arguments += '--snapshot' }
+    $arguments + @("--compress=$Compression", '--check', "--config=$ConfigPath")
 }
 
 function New-RnRestorePointId { param([datetime]$Now = (Get-Date)) $Now.ToString('yyyyMMdd-HHmmss') }
@@ -65,14 +68,16 @@ function Test-RnRestorePointId { param([string]$Id) [bool]($Id -match $script:Rn
 
 function Write-RnMeta {
     param([Parameter(Mandatory)][string]$Directory, [Parameter(Mandatory)][string]$Id, [string]$Name, [Parameter(Mandatory)]$Source, [Parameter(Mandatory)][string]$WimSha256, [Parameter(Mandatory)][long]$WimBytes)
-    $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+    # The captured system's version, read from its kernel: the running OS may be WinPE.
+    $kernel = Join-Path ($Source.DriveLetter + ':\') 'Windows\System32\ntoskrnl.exe'
+    $windowsVersion = if (Test-Path -LiteralPath $kernel) { (Get-Item -LiteralPath $kernel).VersionInfo.ProductVersion } else { '' }
     $meta = [ordered]@{
         schema         = 1
         id             = $Id
         name           = $(if ($Name) { $Name } else { "RestoreNest $Id" })
         createdUtc     = (Get-Date).ToUniversalTime().ToString('o')
         machine        = $env:COMPUTERNAME
-        windowsVersion = $(if ($os) { $os.Version } else { '' })
+        windowsVersion = $windowsVersion
         source         = [ordered]@{ driveLetter = $Source.DriveLetter; diskGuid = $Source.DiskGuid; partitionGuid = $Source.PartitionGuid; partitionNumber = $Source.PartitionNumber }
         wim            = [ordered]@{ file = 'system.wim'; sha256 = $WimSha256; sizeBytes = $WimBytes }
         engine         = [ordered]@{ tool = 'wimlib'; version = $script:RnEngineVersion }
