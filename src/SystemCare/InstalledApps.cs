@@ -2,7 +2,8 @@ using Microsoft.Win32;
 
 namespace SystemCare;
 
-public record InstalledApp(string Name, string Publisher, string Version, string Location, Guid? MsiProductCode = null);
+public record InstalledApp(string Name, string Publisher, string Version, string Location, Guid? MsiProductCode = null,
+    string UninstallString = "", string QuietUninstallString = "", long EstimatedSizeKb = 0, string InstallDate = "", string AppxPackage = "");
 
 public static class InstalledApps
 {
@@ -22,11 +23,16 @@ public static class InstalledApps
                     using var item = uninstall.OpenSubKey(name);
                     var display = item?.GetValue("DisplayName") as string;
                     if (string.IsNullOrWhiteSpace(display) || Convert.ToInt32(item?.GetValue("SystemComponent") ?? 0) == 1) continue;
-                    apps.Add(new(display, item?.GetValue("Publisher") as string ?? "", item?.GetValue("DisplayVersion") as string ?? "", item?.GetValue("InstallLocation") as string ?? "", MsiUninstall.ProductCode(name, item?.GetValue("WindowsInstaller"))));
+                    apps.Add(new(display, item?.GetValue("Publisher") as string ?? "", item?.GetValue("DisplayVersion") as string ?? "", item?.GetValue("InstallLocation") as string ?? "",
+                        MsiUninstall.ProductCode(name, item?.GetValue("WindowsInstaller")),
+                        item?.GetValue("UninstallString") as string ?? "", item?.GetValue("QuietUninstallString") as string ?? "",
+                        Convert.ToInt64(item?.GetValue("EstimatedSize") ?? 0L), item?.GetValue("InstallDate") as string ?? ""));
                 }
                 catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException or FormatException or InvalidCastException or OverflowException or System.IO.IOException) { }
             }
         }
         return apps.Distinct().OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
+
+    public static string FormatSize(long kilobytes) => kilobytes <= 0 ? "" : DiskOverview.FormatBytes(kilobytes * 1024);
 }

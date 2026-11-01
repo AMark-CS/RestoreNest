@@ -4,11 +4,18 @@ namespace SystemCare;
 
 public static class RemovalReview
 {
-    public static string Assess(string location, IEnumerable<string> otherLocations, IEnumerable<string> protectedPaths)
+    // protectedPaths guard a whole subtree (e.g. Windows); protectedRoots guard only the folder itself and its parents
+    // (e.g. Program Files, where individual apps legitimately live).
+    public static string Assess(string location, IEnumerable<string> otherLocations, IEnumerable<string> protectedPaths, IEnumerable<string>? protectedRoots = null)
     {
         var path = Normalize(location);
         if (path is null) return "unknown";
         if (string.Equals(path, Path.GetPathRoot(path)?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return "root";
+        foreach (var item in protectedRoots ?? Array.Empty<string>())
+        {
+            var protectedRoot = Normalize(item);
+            if (protectedRoot is not null && Within(protectedRoot, path)) return "protected";
+        }
         foreach (var item in protectedPaths)
         {
             var protectedPath = Normalize(item);
