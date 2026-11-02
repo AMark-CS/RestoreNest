@@ -22,6 +22,13 @@ $locked = @($parts[0], (P $disk '{aaaaaaaa-0000-0000-0000-000000000001}' $basic 
 Throws { Resolve-RnRestoreTarget -Meta $meta -Partitions $locked -BackupPartitionGuid '{aaaaaaaa-0000-0000-0000-000000000002}' } 'unreadable (BitLocker) target refused'
 Throws { Resolve-RnRestoreTarget -Meta $meta -Partitions @($parts[1], $parts[2]) -BackupPartitionGuid '{aaaaaaaa-0000-0000-0000-000000000002}' } 'no ESP refused'
 
+Check (Test-RnRecoveryPassword '123456-123456-123456-123456-123456-123456-123456-123456') 'valid recovery password accepted'
+Check (-not (Test-RnRecoveryPassword '123456-123456')) 'short recovery password rejected'
+Check (-not (Test-RnRecoveryPassword '12345a-123456-123456-123456-123456-123456-123456-123456')) 'non-digit recovery password rejected'
+Check (-not (Test-RnRecoveryPassword '')) 'empty recovery password rejected'
+Check (Test-RnBitLockerLocked "Volume C: []`n    Lock Status:          Locked`n") 'locked status detected'
+Check (-not (Test-RnBitLockerLocked "    Lock Status:          Unlocked")) 'unlocked status not treated as locked'
+
 $plan = Get-RnBootEntryPlan -Root 'D:\RestoreNest' -Letter 'd'
 Check ($plan.Device -eq 'ramdisk=[D:]\RestoreNest\boot\boot.wim,{ramdiskoptions}' -and $plan.SdiPath -eq '\RestoreNest\boot\boot.sdi') 'boot entry device strings'
 Check ((Get-RnWimlibApplyArguments -WimPath 'D:\a\system.wim' -TargetRoot 'C:') -join ' ' -eq 'apply D:\a\system.wim 1 C:\') 'apply arguments'

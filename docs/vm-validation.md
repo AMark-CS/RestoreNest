@@ -1,6 +1,6 @@
-# VM validation record (2026-11-01)
+# VM validation record (2026-11-01 to 2026-11-02)
 
-This records what was actually run, so the README claims can be checked. Everything here is one Windows 10 Enterprise Evaluation 22H2 guest, one image, one run per item, under QEMU **software emulation (TCG)**, UEFI without Secure Boot, no BitLocker. Durations are emulation times, not hardware benchmarks.
+This records what was actually run, so the README claims can be checked. Everything here is one Windows 10 Enterprise Evaluation 22H2 guest, one image, one run per item, under QEMU **software emulation (TCG)**, UEFI. Most items ran without Secure Boot and without BitLocker; the Secure Boot and BitLocker sections below say where those were on. Durations are emulation times, not hardware benchmarks.
 
 ## Method
 
@@ -53,15 +53,49 @@ The booted Windows 10 guest ran `New-RestorePoint.ps1` (no `-NoSnapshot`, defaul
 
 Not tested: the WPF window itself in the guest (no .NET 8 desktop runtime there; the window was only rendered offscreen on the host), power loss at other points of a restore (for example during `Format-Volume`, where the Windows partition is by definition unusable until a restore finishes), and a low-space destination in a real capture (the free-space check is unit-tested only).
 
+## Secure Boot (edk2 secure firmware, keys enrolled)
+
+Method: QEMU with `edk2-x86_64-secure-code.fd`, `q35,smm=on` and `-global cfi.pflash01,secure=on`; the vars file started in Setup Mode. Inside the live guest `Set-SecureBootUEFI` enrolled db (a throwaway KEK certificate plus *Microsoft Windows Production PCA 2011*, taken from a signed Windows boot manager), KEK and PK, in that order. The payloads are signed with throwaway keys; they are test keys, not Microsoft's.
+
+| Test | Result |
+|---|---|
+| Enrollment in the live guest | OK; `Confirm-SecureBootUEFI` False before, True after; guest booted and logged in with `UEFISecureBootEnabled=1` |
+| Full restore chain under enforcing Secure Boot: break the system, `Restore.ps1 -Execute` in WinPE (1,043 s), verify, boot, login | 12 WinPE checks and 8 live checks PASS (hashes, partition layout, markers, `bootmgfw.efi`, `UEFISecureBootEnabled=1`) |
+| Recovery boot-menu entry under Secure Boot: install in WinPE, boot the installed OS, select the entry **with the keyboard** (Down + Enter sent through QMP), land in WinPE, remove the entry | OK; Windows stayed the default, timeout unchanged, entry and state file removed |
+
+Finding: the first WinPE boot under enforcement failed with `0xc000000f` from Windows Boot Manager. The test media paired a Windows 11 boot manager (10.0.26089 / 28000) with a Windows 10 `boot.wim` (`winload.efi` 19041.1949). Replacing the boot manager and `bootx64.efi` with the copies from inside that same `boot.wim` (19041.1949) fixed it; the same media booted in Setup Mode, so the cause was the version mismatch under enforcement, not the BCD, the signatures or the firmware. `Build-WinPE.ps1` uses `copype`, which takes both from one ADK and so should not mix versions, but **a WinPE whose boot manager and `winload.efi` come from different builds will not boot with Secure Boot on**. `Build-WinPE.ps1` itself was still not run.
+
+## BitLocker (password protector, no TPM)
+
+Method: in the live Windows 10 guest, group policy `EnableBDEWithNoTPM`, then `Enable-BitLocker -UsedSpaceOnly -PasswordProtector` plus a recovery password on C: (Secure Boot on). There is no TPM in the VM, so **TPM-bound BitLocker was not tested**; the pre-boot password prompt was answered through QMP key presses.
+
+| Test | Result |
+|---|---|
+| Encrypt C: (XTS-AES-128, used space only) | FullyEncrypted in 17 min; protection on |
+| Boot with the pre-boot password prompt | OK; autologon reached the desktop |
+| Online VSS capture of the encrypted C: | OK: 4,294 s, listed and verified (`bl-vss`); the VSS snapshot of an unlocked encrypted volume is readable |
+| WinPE view of the encrypted C: | partition present, **no file system, size 0**: unreadable, as expected |
+| `Restore.ps1` on the locked C: (before the fix) | refused with "Target filesystem is '', not NTFS (locked by BitLocker, or damaged?)"; nothing written (safe, but no way forward) |
+| `manage-bde -unlock C: -RecoveryPassword` in WinPE | OK |
+| `Restore.ps1 -RecoveryPassword` with a wrong (well-formed) key | refused, nothing written, C: still locked |
+| `Restore.ps1 -RecoveryPassword` with a malformed key | refused before `manage-bde` is called |
+| `Restore.ps1 -RecoveryPassword` with the right key on the encrypted C: | unlocked, formatted, applied (882 s); `manage-bde`: Fully Decrypted, Protection Off |
+| Boot the restored system | OK; marker from the capture restored, marker created after the capture gone, `winload.efi` present, data hashes identical, `UEFISecureBootEnabled=1` |
+
+Behaviour to know: the restored Windows partition is **not encrypted** (the image is plain files; `Format-Volume` replaces the encrypted volume). Turn BitLocker on again afterwards. The recovery password has to be available in WinPE; without it a restore of a BitLocker system partition cannot proceed. A BitLocker-locked *backup* partition is not listed (no file system) and was not tested.
+
+Harness notes (test setup, not product): a second QEMU writing the same FAT results disk corrupted it and made WinPE find no harness; after BitLocker boots the one-shot search for the results disk in `GuestBoot.cmd` ran before the USB disk was mounted (now a retry loop); the BitLocker pre-boot screen powers the VM off after about a minute without input.
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
 - The installer forced the menu timeout to 10 s and never restored it; it now leaves a non-zero timeout alone and records/restores the original if it had to enable the menu.
 - `Restore.ps1` would stop if `manage-bde` was absent; it now warns.
+- A BitLocker-locked Windows partition made `Restore.ps1` stop with no way forward; it now accepts `-RecoveryPassword` (or prompts), unlocks in WinPE, and still writes nothing if the key is missing, malformed or wrong.
 - After a restore with the recovery entry installed, `Restore.ps1` always re-created the entry although `bcdboot` had kept it, leaving **two** identical entries; it now re-creates it only if the recorded entry is missing.
 - Metadata read the Windows version of the running OS (WinPE); it now reads the captured system's kernel version.
 - The harness itself had several bugs (strict-mode `Count`, a `$dl:` parse error, results wiped between stages, a BOM breaking a Python helper). Two reruns produced stale logs; they were discarded and rerun from a clean snapshot. A BCD polluted by an earlier test also produced two false failures before the clean rerun.
 
 ## Not verified
 
-Windows 11; Secure Boot; BitLocker/TPM; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; selecting the entry with the keyboard in the boot menu; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (this run reused an existing WinPE image); the WPF restore points page driving the scripts.
+Windows 11; TPM-bound BitLocker (and the recovery prompt that changing the boot configuration can trigger with it); a BitLocker-locked backup partition; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (these runs reused an existing WinPE image); the WPF restore points page driving the scripts.

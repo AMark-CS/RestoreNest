@@ -21,6 +21,12 @@ function Resolve-RnRestoreTarget {
     [pscustomobject]@{ Target = $target; Esp = $esp[0] }
 }
 
+# BitLocker recovery passwords are 8 groups of 6 digits. Anything else is rejected before it reaches manage-bde.
+function Test-RnRecoveryPassword { param([string]$Value) [bool]($Value -match '\A\d{6}(-\d{6}){7}\z') }
+
+# True when `manage-bde -status <drive>:` output says the volume is locked (WinPE ships the English tool).
+function Test-RnBitLockerLocked { param([string]$StatusText) [bool]($StatusText -match 'Lock Status:\s+Locked') }
+
 function Get-RnPartitionList {
     $list = @()
     foreach ($disk in @(Get-Disk | Where-Object PartitionStyle -eq 'GPT')) {

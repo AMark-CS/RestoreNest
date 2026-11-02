@@ -19,8 +19,8 @@ public partial class MainWindow
         RpIdColumn.Header = T("编号", "Id"); RpNameColumn.Header = T("名称", "Name"); RpCreatedColumn.Header = T("创建时间", "Created"); RpSizeColumn.Header = T("大小", "Size"); RpStatusColumn.Header = T("状态", "Status");
         RpLogExpander.Header = T("详细输出", "Details");
         RpEmpty.Text = T("此位置还没有还原点。\n选择保存位置后点击“创建还原点”。", "No restore points here yet.\nChoose a location and click “Create restore point”.");
-        RpNotice.Text = T("预览版：已在虚拟机（Windows 10、UEFI）中验证创建与还原，尚未在真机、Windows 11、Secure Boot 或 BitLocker 下验证。请勿作为重要数据的唯一保护。",
-            "Preview: creation and restore were verified in a VM (Windows 10, UEFI). Not yet verified on real hardware, Windows 11, Secure Boot or BitLocker. Do not rely on it as the only protection for important data.");
+        RpNotice.Text = T("预览版：已在虚拟机（Windows 10、UEFI，含 Secure Boot 与密码保护的 BitLocker）中验证创建与还原，尚未在真机、Windows 11 或 TPM 绑定的 BitLocker 下验证。还原加密分区需要 BitLocker 恢复密码。请勿作为重要数据的唯一保护。",
+            "Preview: creation and restore were verified in a VM (Windows 10, UEFI, including Secure Boot and a password-protected BitLocker volume). Not yet verified on real hardware, Windows 11 or TPM-bound BitLocker. Restoring an encrypted partition needs the BitLocker recovery password. Do not rely on it as the only protection for important data.");
         RpPathChanged(null, null!);
     }
 
