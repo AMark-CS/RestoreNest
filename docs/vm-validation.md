@@ -102,6 +102,12 @@ Not tested for Windows 11: Secure Boot (the Windows 11 boot manager on the disk 
 
 Finding (fixed): the first Windows 11 restore passed every check and still had a bug. wimlib's stderr warning above is a terminating error under `$ErrorActionPreference = 'Stop'` in Windows PowerShell 5.1 when the caller redirects streams, so `Restore.ps1` stopped right after the apply, **before `bcdboot` ran**. The disk booted only because the previous Windows 11 boot files were still on the EFI partition, so the checks could not tell. Native tools are now run through `Invoke-RnNative`, which judges them by exit code; the rerun above is the one with "Boot files successfully created". `New-RestorePoint.ps1` uses the same helper for the capture.
 
+## Rerun with the final scripts (Windows 10, Secure Boot on)
+
+The Windows 10 Secure Boot and BitLocker runs above predate the last script fix (`Invoke-RnNative`), so the whole chain was run once more with the committed scripts: online VSS capture (6,309 s, status ok), break, `Restore.ps1 -Execute` from WinPE (843 s, "Boot files successfully created"), then the 12 WinPE checks and, after booting, the 8 live checks (`UEFISecureBootEnabled=1`, markers, `winload.efi`, data hashes): all PASS.
+
+The first attempt stopped on purpose: the capture script refused with "Not enough free space: need about 8.6 GiB, have 5.9 GiB" because the 20 GiB test data partition held three old test points. Nothing was written. The old points were deleted from WinPE and the run was repeated, which confirms the free-space guard works in a real run.
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
