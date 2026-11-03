@@ -108,11 +108,35 @@ The Windows 10 Secure Boot and BitLocker runs above predate the last script fix 
 
 The first attempt stopped on purpose: the capture script refused with "Not enough free space: need about 8.6 GiB, have 5.9 GiB" because the 20 GiB test data partition held three old test points. Nothing was written. The old points were deleted from WinPE and the run was repeated, which confirms the free-space guard works in a real run.
 
+## Building the recovery WinPE with the real ADK, and restoring from it
+
+Until now every test booted a WinPE assembled by hand in a builder VM, and `Build-WinPE.ps1` had never been run. It was run for real in the Windows 10 guest (elevated, Secure Boot on): the official offline installers of the Windows ADK and the WinPE add-on (both 10.1.26100.9457) were installed silently (692 s and 389 s under TCG), then `Build-WinPE.ps1 -WimlibPath ... -OutDir ...` with its default ADK path. It produced a 479 MiB `boot.wim` plus `boot.sdi` in 2,921 s; the image contains `restorenest\Restore.ps1` and `manage-bde.exe`.
+
+Then the whole product flow was exercised with that image:
+
+| Step | Result |
+|---|---|
+| `Install-BootEntry.ps1` on the **live** BCD (not an offline copy) | OK; entry in `displayorder`, Windows still the default |
+| Break the system (`winload.efi` deleted) and boot it | Windows Boot Manager shows the "Recovery" screen for `\Windows\system32\winload.efi` (0xc000000f) **instead of the boot menu**; F9 ("use a different operating system") leads to the menu. |
+| Select "RestoreNest Recovery" | the built WinPE booted, `startnet.cmd` started `Restore.ps1` automatically |
+| Interactive dry run: choose restore point `1` | image verified, plan printed (format + apply the 60 GiB Windows partition, write the EFI partition, backup partition untouched), "Dry run only" |
+| `.\Restore.ps1 -Id <id> -Execute`, then type `RESTORE <id>` at the prompt | restored (135,020 files); "Boot files successfully created", "Recovery boot entry is still present", "Restore finished" |
+| Verify from WinPE, then boot | 12 WinPE checks and 8 live checks PASS (Windows 10 build 10.0.19045, `UEFISecureBootEnabled=1`) |
+
+Findings from running `Build-WinPE.ps1` for the first time (all fixed):
+
+- It failed immediately: `copype.cmd` reads `%WinPERoot%`, `%OSCDImgRoot%` and `%DISMRoot%`, which the "Deployment and Imaging Tools Environment" normally sets and a plain PowerShell does not. The script now sets them.
+- `dism /Add-Package /PackagePath:(Join-Path ...)` reached `dism.exe` as two arguments ("/PackagePath:" and the path) and failed with error 87. The paths are now built first.
+- A failed build left its work directory behind, and the next run refused to start. A failed build now removes it.
+- The image had no `manage-bde`, so `Restore.ps1` warned "BitLocker state could not be checked" and **could not unlock a BitLocker-locked Windows partition** (the unlock tests above used the hand-built WinPE, which had it). `WinPE-SecureStartup` is now part of the build; the rebuilt image has `manage-bde.exe`. The recovery-password unlock itself was not repeated with the rebuilt image.
+- The bootable media is not part of the output: the recovery entry is a ramdisk boot of `boot.wim` from the data partition, so the Windows boot manager of the installed system is used. In this run that was the Windows 10 (19041) boot manager loading the 26100 WinPE under enforcing Secure Boot, and it worked; the boot manager / `boot.wim` mismatch described under Secure Boot only concerned the USB test media.
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
 - The installer forced the menu timeout to 10 s and never restored it; it now leaves a non-zero timeout alone and records/restores the original if it had to enable the menu.
 - `Restore.ps1` would stop if `manage-bde` was absent; it now warns.
+- `Build-WinPE.ps1` had never been run and failed in several ways (see "Building the recovery WinPE with the real ADK"); it now builds, and the image includes `manage-bde`.
 - A harmless wimlib warning on stderr aborted `Restore.ps1` before `bcdboot` (see the Windows 11 section); native tools are now judged by exit code.
 - A BitLocker-locked Windows partition made `Restore.ps1` stop with no way forward; it now accepts `-RecoveryPassword` (or prompts), unlocks in WinPE, and still writes nothing if the key is missing, malformed or wrong.
 - After a restore with the recovery entry installed, `Restore.ps1` always re-created the entry although `bcdboot` had kept it, leaving **two** identical entries; it now re-creates it only if the recorded entry is missing.
@@ -121,4 +145,4 @@ The first attempt stopped on purpose: the capture script refused with "Not enoug
 
 ## Not verified
 
-Secure Boot and BitLocker on Windows 11; TPM-bound BitLocker (and the recovery prompt that changing the boot configuration can trigger with it); a BitLocker-locked backup partition; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (these runs reused an existing WinPE image); the WPF restore points page driving the scripts.
+Secure Boot and BitLocker on Windows 11; TPM-bound BitLocker (and the recovery prompt that changing the boot configuration can trigger with it); a BitLocker-locked backup partition; the recovery-password unlock run again inside the image built by `Build-WinPE.ps1`; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); the WPF restore points page driving the scripts.

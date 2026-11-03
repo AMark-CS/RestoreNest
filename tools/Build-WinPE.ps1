@@ -3,7 +3,7 @@
 .SYNOPSIS
   Builds the RestoreNest recovery WinPE (boot.wim + boot.sdi) with the Windows ADK + WinPE add-on.
 .DESCRIPTION
-  Uses copype, adds WMI, .NET Framework, Scripting, PowerShell, StorageWMI and DISM cmdlets, copies the restore scripts and
+  Uses copype, adds WMI, SecureStartup (manage-bde), .NET Framework, Scripting, PowerShell, StorageWMI and DISM cmdlets, copies the restore scripts and
   wimlib into the image, and sets startnet.cmd to launch tools\Restore.ps1. Output: <OutDir>\boot.wim and boot.sdi.
   Run from an elevated "Deployment and Imaging Tools Environment" or let the script locate the ADK.
   wimlib-imagex.exe is GPLv3+; supply your own copy with -WimlibPath and review the license before distributing the image.
@@ -25,10 +25,19 @@ if (-not (Test-Path -LiteralPath $copype)) { throw "ADK WinPE add-on not found u
 foreach ($f in $WimlibPath, (Join-Path (Split-Path $WimlibPath) 'libwim-15.dll')) { if (-not (Test-Path -LiteralPath $f)) { throw "Missing: $f (wimlib-imagex.exe needs libwim-15.dll beside it)." } }
 if (Test-Path -LiteralPath $WorkDir) { throw "Work directory exists: $WorkDir. Remove it first." }
 
-# copype needs the Deployment Tools environment (dism, oscdimg).
+# copype needs the Deployment Tools environment (dism, oscdimg). DandISetEnv.bat normally provides it; copype.cmd reads
+# %WinPERoot%, %OSCDImgRoot% and %DISMRoot% and fails ("processor architecture was not found", "Dism.exe is not recognized")
+# without them.
 $env:Path = "$(Join-Path $AdkRoot 'Deployment Tools\amd64\DISM');$(Join-Path $AdkRoot 'Deployment Tools\amd64\Oscdimg');$env:Path"
+$env:WinPERoot = Join-Path $AdkRoot 'Windows Preinstallation Environment'
+$env:OSCDImgRoot = Join-Path $AdkRoot 'Deployment Tools\amd64\Oscdimg'
+$env:DISMRoot = Join-Path $AdkRoot 'Deployment Tools\amd64\DISM'
 & cmd.exe /c "`"$copype`" amd64 `"$WorkDir`""
-if ($LASTEXITCODE -ne 0) { throw "copype failed ($LASTEXITCODE)." }
+if ($LASTEXITCODE -ne 0) {
+    # copype creates the work directory first; leaving it behind would make the next attempt refuse to start.
+    Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
+    throw "copype failed ($LASTEXITCODE)."
+}
 
 $mount = Join-Path $WorkDir 'mount'
 $wim = Join-Path $WorkDir 'media\sources\boot.wim'
@@ -37,8 +46,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Mount failed.' }
 $committed = $false
 try {
     # Order matters: WMI before NetFx/Scripting/PowerShell; StorageWMI and DismCmdlets after PowerShell.
-    foreach ($name in 'WinPE-WMI', 'WinPE-NetFx', 'WinPE-Scripting', 'WinPE-PowerShell', 'WinPE-StorageWMI', 'WinPE-DismCmdlets') {
-        dism.exe /Image:$mount /Add-Package /PackagePath:(Join-Path $packages "$name.cab") /PackagePath:(Join-Path $packages "en-us\$($name)_en-us.cab")
+    # WinPE-SecureStartup provides manage-bde, which Restore.ps1 needs to see and unlock a BitLocker-locked Windows partition.
+    foreach ($name in 'WinPE-WMI', 'WinPE-SecureStartup', 'WinPE-NetFx', 'WinPE-Scripting', 'WinPE-PowerShell', 'WinPE-StorageWMI', 'WinPE-DismCmdlets') {
+        # Build each argument first: `/PackagePath:(Join-Path ...)` reaches dism.exe as two arguments ("/PackagePath:" and the path).
+        $basePackage = Join-Path $packages "$name.cab"
+        $languagePackage = Join-Path $packages "en-us\$($name)_en-us.cab"
+        dism.exe /Image:$mount /Add-Package "/PackagePath:$basePackage" "/PackagePath:$languagePackage"
         if ($LASTEXITCODE -ne 0) { throw "Adding $name failed ($LASTEXITCODE)." }
     }
     $dest = Join-Path $mount 'restorenest'
@@ -55,7 +68,10 @@ try {
     $committed = $true
 }
 finally {
-    if (-not $committed) { dism.exe /Unmount-Image /MountDir:$mount /Discard | Out-Null }
+    if (-not $committed) {
+        dism.exe /Unmount-Image /MountDir:$mount /Discard | Out-Null
+        Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue   # a failed build must not block the next attempt
+    }
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Copy-Item $wim (Join-Path $OutDir 'boot.wim')
