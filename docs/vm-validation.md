@@ -1,6 +1,6 @@
 # VM validation record (2026-11-01 to 2026-11-02)
 
-This records what was actually run, so the README claims can be checked. Everything here is one Windows 10 Enterprise Evaluation 22H2 guest, one image, one run per item, under QEMU **software emulation (TCG)**, UEFI. Most items ran without Secure Boot and without BitLocker; the Secure Boot and BitLocker sections below say where those were on. Durations are emulation times, not hardware benchmarks.
+This records what was actually run, so the README claims can be checked. Everything here is one Windows 10 Enterprise Evaluation 22H2 guest (plus one Windows 11 Enterprise Evaluation guest, see its own section), one image per OS, one run per item, under QEMU **software emulation (TCG)**, UEFI. Most items ran without Secure Boot and without BitLocker; the Secure Boot and BitLocker sections below say where those were on. Durations are emulation times, not hardware benchmarks.
 
 ## Method
 
@@ -86,11 +86,28 @@ Behaviour to know: the restored Windows partition is **not encrypted** (the imag
 
 Harness notes (test setup, not product): a second QEMU writing the same FAT results disk corrupted it and made WinPE find no harness; after BitLocker boots the one-shot search for the results disk in `GuestBoot.cmd` ran before the USB disk was mounted (now a retry loop); the BitLocker pre-boot screen powers the VM off after about a minute without input.
 
+## Windows 11 (restored from the Windows 10 WinPE)
+
+Guest: Windows 11 Enterprise Evaluation, zh-CN, build 10.0.26300, installed unattended from the ISO into a fresh 96 GiB disk laid out like the Windows 10 guest (EFI 300 MB, MSR, Windows 60 GiB, Recovery 1 GiB, the rest left for the data partition). The VM has no TPM and no Secure Boot, so the install used the usual `LabConfig` bypass values (`BypassTPMCheck`, `BypassSecureBootCheck`, `BypassRAMCheck`, `BypassCPUCheck`, `BypassStorageCheck`) set from `autounattend.xml` before setup starts; normal (non Secure Boot) firmware, because the install media's boot manager is not signed by the hand-enrolled db. The install took 100 minutes under TCG. The recovery WinPE was **still the Windows 10 2004 one**; the point of the test was that it can restore a Windows 11 image.
+
+| Test | Result |
+|---|---|
+| Online VSS capture in the live Windows 11 guest | OK: 14 GiB of files, 6.85 GiB image, 2,456 s; `Get-RestorePoint -Verify` status ok |
+| Break the system from WinPE (`winload.efi` deleted, markers changed) | done |
+| `Restore.ps1 -Execute` from the Windows 10 WinPE | OK (1,920 s); `bcdboot` ran and reported "Boot files successfully created"; wimlib warned that it could not set short (8.3) names on 10 files, which is harmless |
+| WinPE checks | `winload.efi` back, markers correct, one Windows volume, one data volume, partition layout identical, data hashes identical, backup still verifies, `bootmgfw.efi` present: all PASS |
+| Boot the restored disk, autologon, guest script | logged in, build 10.0.26300; markers correct, `winload.efi` present, data hashes identical: all PASS |
+
+Not tested for Windows 11: Secure Boot (the Windows 11 boot manager on the disk may be signed with the 2023 CA that the test db does not contain), BitLocker, the boot-menu entry, TPM.
+
+Finding (fixed): the first Windows 11 restore passed every check and still had a bug. wimlib's stderr warning above is a terminating error under `$ErrorActionPreference = 'Stop'` in Windows PowerShell 5.1 when the caller redirects streams, so `Restore.ps1` stopped right after the apply, **before `bcdboot` ran**. The disk booted only because the previous Windows 11 boot files were still on the EFI partition, so the checks could not tell. Native tools are now run through `Invoke-RnNative`, which judges them by exit code; the rerun above is the one with "Boot files successfully created". `New-RestorePoint.ps1` uses the same helper for the capture.
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.
 - The installer forced the menu timeout to 10 s and never restored it; it now leaves a non-zero timeout alone and records/restores the original if it had to enable the menu.
 - `Restore.ps1` would stop if `manage-bde` was absent; it now warns.
+- A harmless wimlib warning on stderr aborted `Restore.ps1` before `bcdboot` (see the Windows 11 section); native tools are now judged by exit code.
 - A BitLocker-locked Windows partition made `Restore.ps1` stop with no way forward; it now accepts `-RecoveryPassword` (or prompts), unlocks in WinPE, and still writes nothing if the key is missing, malformed or wrong.
 - After a restore with the recovery entry installed, `Restore.ps1` always re-created the entry although `bcdboot` had kept it, leaving **two** identical entries; it now re-creates it only if the recorded entry is missing.
 - Metadata read the Windows version of the running OS (WinPE); it now reads the captured system's kernel version.
@@ -98,4 +115,4 @@ Harness notes (test setup, not product): a second QEMU writing the same FAT resu
 
 ## Not verified
 
-Windows 11; TPM-bound BitLocker (and the recovery prompt that changing the boot configuration can trigger with it); a BitLocker-locked backup partition; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (these runs reused an existing WinPE image); the WPF restore points page driving the scripts.
+Secure Boot and BitLocker on Windows 11; TPM-bound BitLocker (and the recovery prompt that changing the boot configuration can trigger with it); a BitLocker-locked backup partition; power loss at other restore stages; low space in a real capture; physical hardware and real storage drivers; application-level state after restore (only login and file markers were checked); the re-creation branch of `Restore.ps1` (entry missing after `bcdboot`), which never ran because `bcdboot` kept the entry; the data-partition hash check after the *second* restore cycle (it was checked after the first, which used the same code path); building the WinPE with `Build-WinPE.ps1` (these runs reused an existing WinPE image); the WPF restore points page driving the scripts.

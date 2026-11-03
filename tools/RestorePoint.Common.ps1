@@ -5,6 +5,18 @@ Set-StrictMode -Version 2.0
 $script:RnEngineVersion = '1'
 $script:RnIdPattern = '\A\d{8}-\d{6}\z'
 
+# Runs a native tool and returns its exit code. In Windows PowerShell 5.1 a native command that writes anything to stderr
+# (wimlib prints warnings there) becomes a terminating error under `$ErrorActionPreference = 'Stop'` as soon as the caller
+# redirects streams, which aborted a restore after the image was applied but before bcdboot ran. Judge by the exit code instead.
+function Invoke-RnNative {
+    param([Parameter(Mandatory)][string]$FilePath, [string[]]$Arguments = @())
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & $FilePath @Arguments 2>&1 | ForEach-Object { Write-Host ([string]$_) } }
+    finally { $ErrorActionPreference = $previous }
+    $LASTEXITCODE
+}
+
 function Get-RnVolumeIdentity {
     param([Parameter(Mandatory)][ValidatePattern('\A[A-Za-z]\z')][string]$DriveLetter)
     $partition = Get-Partition -DriveLetter $DriveLetter -ErrorAction Stop

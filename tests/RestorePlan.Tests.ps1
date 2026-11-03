@@ -29,6 +29,13 @@ Check (-not (Test-RnRecoveryPassword '')) 'empty recovery password rejected'
 Check (Test-RnBitLockerLocked "Volume C: []`n    Lock Status:          Locked`n") 'locked status detected'
 Check (-not (Test-RnBitLockerLocked "    Lock Status:          Unlocked")) 'unlocked status not treated as locked'
 
+# Native tools that write to stderr must not abort a script that runs under $ErrorActionPreference = 'Stop' with redirected streams
+function Test-StderrTool { $ErrorActionPreference = 'Stop'; $code = Invoke-RnNative -FilePath 'cmd.exe' -Arguments @('/c', 'echo warning 1>&2 & exit 0'); $code }
+$stderrOut = @(Test-StderrTool *>&1 | Where-Object { $_ -is [int] })
+Check ($stderrOut.Count -eq 1 -and $stderrOut[0] -eq 0) 'stderr output with exit 0 is not an error'
+$codeOut = @(& { $ErrorActionPreference = 'Stop'; Invoke-RnNative -FilePath 'cmd.exe' -Arguments @('/c', 'echo bad 1>&2 & exit 3') } *>&1 | Where-Object { $_ -is [int] })
+Check ($codeOut.Count -eq 1 -and $codeOut[0] -eq 3) 'non-zero exit code is returned'
+
 $plan = Get-RnBootEntryPlan -Root 'D:\RestoreNest' -Letter 'd'
 Check ($plan.Device -eq 'ramdisk=[D:]\RestoreNest\boot\boot.wim,{ramdiskoptions}' -and $plan.SdiPath -eq '\RestoreNest\boot\boot.sdi') 'boot entry device strings'
 Check ((Get-RnWimlibApplyArguments -WimPath 'D:\a\system.wim' -TargetRoot 'C:') -join ' ' -eq 'apply D:\a\system.wim 1 C:\') 'apply arguments'

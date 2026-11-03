@@ -55,8 +55,8 @@ try {
     Set-Content -LiteralPath $config -Value (Get-RnCaptureConfig) -Encoding Unicode
     $arguments = Get-RnWimlibCaptureArguments -SourceDrive $SystemDrive -WimPath $plan.Wim -ImageName "RestoreNest $id" -ConfigPath $config -Compression $Compression -NoSnapshot:$NoSnapshot
     $watch = [Diagnostics.Stopwatch]::StartNew()
-    & $WimlibPath @arguments
-    if ($LASTEXITCODE -ne 0) { throw "wimlib capture failed (exit $LASTEXITCODE)." }
+    $captureExit = Invoke-RnNative -FilePath $WimlibPath -Arguments $arguments
+    if ($captureExit -ne 0) { throw "wimlib capture failed (exit $captureExit)." }
     $item = Get-Item -LiteralPath $plan.Wim
     $hash = (Get-FileHash -LiteralPath $plan.Wim -Algorithm SHA256).Hash
     Write-RnMeta -Directory $partial -Id $id -Name $Name -Source $source -WimSha256 $hash -WimBytes $item.Length | Out-Null

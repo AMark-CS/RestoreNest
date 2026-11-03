@@ -22,7 +22,7 @@ The old `wbadmin` route (backup page, recovery-task export, manifest verifier) w
 
 ## Status: what "unverified" means
 
-The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), not on Windows 11 and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md); acceptance list: [docs/backup-engine.md](docs/backup-engine.md).
+The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), plus one Windows 11 image (restored from the Windows 10 WinPE), and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md); acceptance list: [docs/backup-engine.md](docs/backup-engine.md).
 
 ## Build and run
 
@@ -41,4 +41,4 @@ Lab helpers for a Hyper-V test VM are in `tools/lab`.
 
 ## 安全说明
 
-0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载尚未用真实安装包在虚拟机中验证）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**Secure Boot 和密码保护的 BitLocker 卷也已在虚拟机中验证（BitLocker 系统分区还原需要恢复密码，还原后分区不再加密）；但仍仅限一个 Windows 10 镜像、未验证 Windows 11 与 TPM 绑定的 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。
+0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载尚未用真实安装包在虚拟机中验证）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**Secure Boot 和密码保护的 BitLocker 卷也已在虚拟机中验证（BitLocker 系统分区还原需要恢复密码，还原后分区不再加密）；另有一个 Windows 11 镜像在虚拟机中验证通过（未开 Secure Boot/BitLocker）；但仍未验证 TPM 绑定的 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。

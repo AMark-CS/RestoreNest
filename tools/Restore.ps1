@@ -106,14 +106,14 @@ try {
     $label = (Get-Volume -Partition $tp).FileSystemLabel
     $tl = $tp.DriveLetter
     Format-Volume -Partition $tp -FileSystem NTFS -NewFileSystemLabel $label -Force -Confirm:$false | Out-Null
-    & $WimlibPath @(Get-RnWimlibApplyArguments -WimPath (Join-Path $point.Path 'system.wim') -TargetRoot "$tl`:")
-    if ($LASTEXITCODE -ne 0) { throw "wimlib apply failed ($LASTEXITCODE). The target partition is now incomplete; boot RestoreNest Recovery again and retry." }
+    $applyExit = Invoke-RnNative -FilePath $WimlibPath -Arguments @(Get-RnWimlibApplyArguments -WimPath (Join-Path $point.Path 'system.wim') -TargetRoot "$tl`:")
+    if ($applyExit -ne 0) { throw "wimlib apply failed ($applyExit). The target partition is now incomplete; boot RestoreNest Recovery again and retry." }
 
     $ep = Get-Partition -DiskNumber $esp.DiskNumber -PartitionNumber $esp.PartitionNumber
     $espAssigned = $false
     if (-not $ep.DriveLetter) { $ep | Add-PartitionAccessPath -AssignDriveLetter; $ep = Get-Partition -DiskNumber $esp.DiskNumber -PartitionNumber $esp.PartitionNumber; $espAssigned = $true }
-    & bcdboot.exe "$tl`:\Windows" /s "$($ep.DriveLetter):" /f UEFI
-    if ($LASTEXITCODE -ne 0) { throw "bcdboot failed ($LASTEXITCODE)." }
+    $bootExit = Invoke-RnNative -FilePath 'bcdboot.exe' -Arguments @("$tl`:\Windows", '/s', "$($ep.DriveLetter):", '/f', 'UEFI')
+    if ($bootExit -ne 0) { throw "bcdboot failed ($bootExit)." }
 
     # bcdboot normally keeps the existing store (VM test: the entry survived). Only if the recorded entry is gone, re-create it;
     # re-creating unconditionally left two identical entries.
