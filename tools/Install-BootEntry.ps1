@@ -14,6 +14,7 @@ param(
     [Parameter(Mandatory)][string]$Root,
     [string]$BootWim, [string]$BootSdi,
     [string]$Store,
+    [ValidateSet('', 'zh', 'en')][string]$Language = '',   # language of the recovery screen, remembered in <Root>\boot\language.txt
     [switch]$Remove, [switch]$DryRun
 )
 $ErrorActionPreference = 'Stop'
@@ -47,7 +48,7 @@ if ($Remove) {
     if ($state.entry -notmatch '\A\{[0-9a-fA-F-]{36}\}\z') { throw 'Recorded entry id is invalid.' }
     [void](Invoke-Bcd @('/delete', $state.entry, '/cleanup'))
     if ($state.PSObject.Properties['timeoutChanged'] -and $state.timeoutChanged -and $null -ne $state.originalTimeout) { [void](Invoke-Bcd @('/timeout', [string]$state.originalTimeout)) }
-    if (-not $DryRun) { Remove-Item -LiteralPath $stateFile -Force }
+    if (-not $DryRun) { Remove-Item -LiteralPath $stateFile -Force; Remove-Item -LiteralPath (Join-Path $bootDir 'language.txt') -Force -ErrorAction SilentlyContinue }
     Write-Host 'Boot entry removed.'
     return
 }
@@ -67,6 +68,7 @@ if (-not $DryRun) {
         $dest = Join-Path $bootDir $pair[1]
         if ([IO.Path]::GetFullPath($pair[0]) -ine [IO.Path]::GetFullPath($dest)) { Copy-Item -LiteralPath $pair[0] -Destination $dest -Force }
     }
+    if ($Language) { Set-Content -LiteralPath (Join-Path $bootDir 'language.txt') -Value $Language -Encoding ascii }
     $backup = Join-Path $bootDir ('bcd-backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.bcd')
     # `bcdedit /store <file> /export` is rejected by bcdedit; an offline store is just a file, so copy it.
     if ($Store) { Copy-Item -LiteralPath $Store -Destination $backup -Force } else { [void](Invoke-Bcd @('/export', $backup)) }

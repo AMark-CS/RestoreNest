@@ -62,22 +62,13 @@ $backupLetter = $selected.Root.Substring(0, 1)
 $backupPartition = @($partitions | Where-Object { $_.DriveLetter -ieq $backupLetter })
 if ($backupPartition.Count -ne 1) { throw "Cannot identify the partition holding the backup ($backupLetter`:)." }
 # A BitLocker-locked Windows partition shows no file system in WinPE. Unlock it with the recovery password first (nothing is written yet).
-$wantGuid = ConvertTo-RnGuid $meta.source.partitionGuid
-$lockedCandidate = @($partitions | Where-Object { (ConvertTo-RnGuid $_.Guid) -eq $wantGuid -and $_.FileSystem -ne 'NTFS' })
-if ($lockedCandidate.Count -eq 1) {
-    $lp = Get-Partition -DiskNumber $lockedCandidate[0].DiskNumber -PartitionNumber $lockedCandidate[0].PartitionNumber
-    if (-not $lp.DriveLetter) { $lp | Add-PartitionAccessPath -AssignDriveLetter; $lp = Get-Partition -DiskNumber $lockedCandidate[0].DiskNumber -PartitionNumber $lockedCandidate[0].PartitionNumber }
-    $lockText = ''
-    try { $lockText = (& manage-bde.exe -status "$($lp.DriveLetter):" 2>$null | Out-String) } catch { Write-Warning 'manage-bde is not available; the partition cannot be unlocked here.' }
-    if (Test-RnBitLockerLocked $lockText) {
-        Write-Host "The Windows partition ($($lp.DriveLetter):) is locked by BitLocker. It must be unlocked before it can be restored."
-        $key = $RecoveryPassword
-        if (-not $key) { $key = Read-Host 'BitLocker recovery password (48 digits; empty to cancel)' }
-        if (-not (Test-RnRecoveryPassword $key)) { throw 'No valid BitLocker recovery password was provided; nothing was written.' }
-        & manage-bde.exe -unlock "$($lp.DriveLetter):" -RecoveryPassword $key | Out-Host
-        if ($LASTEXITCODE -ne 0) { throw 'The BitLocker recovery password did not unlock the partition; nothing was written.' }
-        $partitions = Get-RnPartitionList
-    }
+$locked = Find-RnLockedTarget -Meta $meta -Partitions $partitions
+if ($locked) {
+    Write-Host "The Windows partition ($($locked.DriveLetter):) is locked by BitLocker. It must be unlocked before it can be restored."
+    $key = $RecoveryPassword
+    if (-not $key) { $key = Read-Host 'BitLocker recovery password (48 digits; empty to cancel)' }
+    Unlock-RnVolume -DriveLetter $locked.DriveLetter -RecoveryPassword $key
+    $partitions = Get-RnPartitionList
 }
 $resolved = Resolve-RnRestoreTarget -Meta $meta -Partitions $partitions -BackupPartitionGuid $backupPartition[0].Guid
 $target = $resolved.Target; $esp = $resolved.Esp

@@ -27,6 +27,50 @@ function Test-RnRecoveryPassword { param([string]$Value) [bool]($Value -match '\
 # True when `manage-bde -status <drive>:` output says the volume is locked (WinPE ships the English tool).
 function Test-RnBitLockerLocked { param([string]$StatusText) [bool]($StatusText -match 'Lock Status:\s+Locked') }
 
+# The partition a restore point was taken from, when it shows no file system because BitLocker has it locked (as it does in
+# WinPE). Returns an object with its DriveLetter (assigned if it had none) or $null when it is readable or cannot be found.
+function Find-RnLockedTarget {
+    param([Parameter(Mandatory)]$Meta, [Parameter(Mandatory)]$Partitions)
+    $want = ConvertTo-RnGuid $Meta.source.partitionGuid
+    $candidate = @($Partitions | Where-Object { (ConvertTo-RnGuid $_.Guid) -eq $want -and $_.FileSystem -ne 'NTFS' })
+    if ($candidate.Count -ne 1) { return $null }
+    $lp = Get-Partition -DiskNumber $candidate[0].DiskNumber -PartitionNumber $candidate[0].PartitionNumber
+    if (-not $lp.DriveLetter) { $lp | Add-PartitionAccessPath -AssignDriveLetter; $lp = Get-Partition -DiskNumber $candidate[0].DiskNumber -PartitionNumber $candidate[0].PartitionNumber }
+    $text = ''
+    try { $text = (& manage-bde.exe -status "$($lp.DriveLetter):" 2>$null | Out-String) } catch { Write-Warning 'manage-bde is not available; the partition cannot be unlocked here.' }
+    if (Test-RnBitLockerLocked $text) { return [pscustomobject]@{ DriveLetter = [string]$lp.DriveLetter } }
+    $null
+}
+
+# 48-digit recovery passwords in `manage-bde -protectors -get` output; the format is the same in every display language.
+function Get-RnRecoveryPasswords {
+    param([string]$Text)
+    @([regex]::Matches($Text, '(?<!\d)\d{6}(?:-\d{6}){7}(?!\d)') | ForEach-Object Value | Select-Object -Unique)
+}
+
+# Whether BitLocker protects the drive (read from WMI, so it does not depend on the display language) and its recovery passwords.
+function Get-RnBitLockerInfo {
+    param([string]$Drive = $env:SystemDrive)
+    $letter = $Drive.TrimEnd('\').TrimEnd(':') + ':'
+    $on = $false
+    try {
+        $volume = Get-CimInstance -Namespace 'root\cimv2\Security\MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter "DriveLetter='$letter'" -ErrorAction Stop
+        $on = ($null -ne $volume -and [int]$volume.ProtectionStatus -eq 1)
+    }
+    catch { $on = $false }
+    $keys = @()
+    if ($on) { $keys = @(Get-RnRecoveryPasswords -Text ((& manage-bde.exe -protectors -get $letter -Type RecoveryPassword 2>$null) | Out-String)) }
+    [pscustomobject]@{ protectionOn = $on; recoveryPasswords = $keys }
+}
+
+# Unlocks a BitLocker volume with its 48-digit recovery password; throws (nothing has been written yet) when it does not work.
+function Unlock-RnVolume {
+    param([Parameter(Mandatory)][ValidatePattern('\A[A-Za-z]\z')][string]$DriveLetter, [string]$RecoveryPassword)
+    if (-not (Test-RnRecoveryPassword $RecoveryPassword)) { throw 'No valid BitLocker recovery password was provided; nothing was written.' }
+    & manage-bde.exe -unlock "$($DriveLetter):" -RecoveryPassword $RecoveryPassword | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'The BitLocker recovery password did not unlock the partition; nothing was written.' }
+}
+
 function Get-RnPartitionList {
     $list = @()
     foreach ($disk in @(Get-Disk | Where-Object PartitionStyle -eq 'GPT')) {

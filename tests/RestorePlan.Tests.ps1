@@ -36,6 +36,13 @@ Check ($stderrOut.Count -eq 1 -and $stderrOut[0] -eq 0) 'stderr output with exit
 $codeOut = @(& { $ErrorActionPreference = 'Stop'; Invoke-RnNative -FilePath 'cmd.exe' -Arguments @('/c', 'echo bad 1>&2 & exit 3') } *>&1 | Where-Object { $_ -is [int] })
 Check ($codeOut.Count -eq 1 -and $codeOut[0] -eq 3) 'non-zero exit code is returned'
 
+# BitLocker recovery passwords are found in any display language
+$english = "Volume C: []`r`nAll Key Protectors`r`n    Numerical Password:`r`n      ID: {ABCDEF01-0000-0000-0000-000000000001}`r`n      Password:`r`n        398706-073337-291610-054714-140228-593967-459360-006688`r`n"
+$chinese = "卷 C: []`r`n    数字密码:`r`n      ID: {ABCDEF01-0000-0000-0000-000000000001}`r`n      密码:`r`n        111111-222222-333333-444444-555555-666666-777777-888888`r`n        111111-222222-333333-444444-555555-666666-777777-888888`r`n"
+Check ((@(Get-RnRecoveryPasswords -Text $english))[0] -eq '398706-073337-291610-054714-140228-593967-459360-006688') 'recovery password found in English output'
+Check (@(Get-RnRecoveryPasswords -Text $chinese).Count -eq 1 -and (@(Get-RnRecoveryPasswords -Text $chinese))[0] -eq '111111-222222-333333-444444-555555-666666-777777-888888') 'recovery password found in Chinese output, duplicates removed'
+Check (@(Get-RnRecoveryPasswords -Text '').Count -eq 0 -and @(Get-RnRecoveryPasswords -Text 'ID: 123456-123456').Count -eq 0 -and @(Get-RnRecoveryPasswords -Text 'x1234567-123456-123456-123456-123456-123456-123456-123456').Count -eq 0) 'no false matches'
+
 $plan = Get-RnBootEntryPlan -Root 'D:\RestoreNest' -Letter 'd'
 Check ($plan.Device -eq 'ramdisk=[D:]\RestoreNest\boot\boot.wim,{ramdiskoptions}' -and $plan.SdiPath -eq '\RestoreNest\boot\boot.sdi') 'boot entry device strings'
 Check ((Get-RnWimlibApplyArguments -WimPath 'D:\a\system.wim' -TargetRoot 'C:') -join ' ' -eq 'apply D:\a\system.wim 1 C:\') 'apply arguments'

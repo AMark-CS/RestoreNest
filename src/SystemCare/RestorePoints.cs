@@ -18,6 +18,26 @@ public static class RestorePoints
     // -Verbose also prints PowerShell module import chatter (hundreds of "Exporting function" lines); the UI log hides it.
     public static bool IsModuleNoise(string line) => System.Text.RegularExpressions.Regex.IsMatch(line, @"^VERBOSE: (Exporting|Importing|Loading|Populating) ");
 
+    // Prepare-Recovery.ps1 announces its steps as "RN_STEP 2/5 adk".
+    public static (int Number, int Total, string Name)? ParseStep(string line)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(line, @"^RN_STEP (\d+)/(\d+) (\w+)\s*$");
+        return match.Success ? (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value), match.Groups[3].Value) : null;
+    }
+
+    public static string StepText((int Number, int Total, string Name) step, bool english)
+    {
+        var (zh, en) = step.Name switch
+        {
+            "wimlib" => ("正在准备工具（wimlib）…", "Preparing wimlib…"),
+            "adk" => ("正在安装微软 Windows ADK（需要联网，比较慢）…", "Installing the Microsoft Windows ADK (needs internet, slow)…"),
+            "build" => ("正在构建恢复环境（比较慢）…", "Building the recovery environment (slow)…"),
+            "bootentry" => ("正在添加启动项…", "Adding the boot menu entry…"),
+            _ => ("完成", "Done")
+        };
+        return $"[{step.Number}/{step.Total}] " + (english ? en : zh);
+    }
+
     public static List<RestorePointInfo> ParseList(string json)
     {
         if (string.IsNullOrWhiteSpace(json)) return new();

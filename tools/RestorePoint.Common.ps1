@@ -51,6 +51,14 @@ function Resolve-RnDestination {
     return $full.TrimEnd('\')
 }
 
+# Free space a capture needs on the destination. LZX typically shrinks well, but demand 60% of the used space on the system
+# volume as a conservative floor; wimlib fails loudly if that is still short.
+function Get-RnRequiredBytes {
+    param([Parameter(Mandatory)][ValidatePattern('\A[A-Za-z]\z')][string]$SystemDrive)
+    $volume = Get-Volume -DriveLetter $SystemDrive -ErrorAction Stop
+    [long](($volume.Size - $volume.SizeRemaining) * 0.6)
+}
+
 function Get-RnCaptureConfig {
     # Volatile or regenerated files that must not be in an image.
     @'
@@ -90,6 +98,15 @@ function Remove-RnStalePartials {
         }
     }
     $removed
+}
+
+# True while a capture is running into $Root: a recently written *.partial folder AND a wimlib process. The folder alone is not
+# enough, because a capture that was killed (power loss) leaves one behind for hours and must not block the next attempt.
+function Test-RnCaptureRunning {
+    param([Parameter(Mandatory)][string]$Root, [double]$FreshHours = 2)
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $false }
+    $fresh = @(Get-ChildItem -LiteralPath $Root -Directory -Filter '*.partial' -ErrorAction SilentlyContinue | Where-Object { ((Get-Date) - $_.LastWriteTime).TotalHours -lt $FreshHours })
+    ($fresh.Count -gt 0) -and [bool](Get-Process -Name 'wimlib-imagex' -ErrorAction SilentlyContinue)
 }
 
 function New-RnRestorePointId { param([datetime]$Now = (Get-Date)) $Now.ToString('yyyyMMdd-HHmmss') }

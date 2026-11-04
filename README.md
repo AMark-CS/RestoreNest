@@ -20,6 +20,16 @@ Details, durations (QEMU emulation, not hardware speed), the bugs these runs fou
 
 The old `wbadmin` route (backup page, recovery-task export, manifest verifier) was removed in 0.1.x; it stays in git history.
 
+## How to use it (for a non-technical user)
+
+1. **Set up the recovery environment, once.** Open the app, choose where restore points are stored (another drive such as D:, or an external disk; not the Windows drive), then click **Set up recovery**. If this PC does not have them yet, the app downloads wimlib and the Microsoft Windows ADK from their official sites (needs internet, roughly 1 to 3 GB, 20 to 60 minutes), builds the recovery environment and adds a "RestoreNest Recovery" entry to the boot menu. Windows stays the default.
+2. **Turn on automatic restore points** (or click **Create restore point** whenever you like). You choose how often (daily, every 3 days, weekly, every 2 weeks, monthly), at what time and how many to keep. The oldest ones are deleted automatically, also when the drive is full, but the newest one is always kept.
+3. **If Windows still works and you want to go back:** click **Restart and restore**. The PC restarts into the recovery screen once.
+4. **If Windows does not start:** on the blue "Recovery" screen press **F9** and choose "RestoreNest Recovery". (Windows does not show the boot menu by itself when its own boot files are broken.)
+5. In the recovery screen pick the point in time, read what will be lost, tick the box and start. When it says "Restore finished", click Restart.
+
+If the Windows drive is protected by **BitLocker**, save the 48-digit recovery password now (the app shows a card with **Show recovery password** and **Save to a file**): the recovery screen asks for it. Restore points are plain image files, so the drive that holds them is not protected by BitLocker unless you turn it on for that drive too.
+
 ## Status: what "unverified" means
 
 The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), plus one Windows 11 image (restored from the Windows 10 WinPE), and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md); acceptance list: [docs/backup-engine.md](docs/backup-engine.md).
@@ -35,7 +45,7 @@ powershell -ExecutionPolicy Bypass -File tests/RestorePoint.Tests.ps1
 powershell -ExecutionPolicy Bypass -File tests/RestorePlan.Tests.ps1
 ```
 
-Restore points need `wimlib-imagex.exe` and `libwim-15.dll` (wimlib 1.14.x, **GPLv3+ for the command-line tool**). They are not in this repository: download them yourself from <https://wimlib.net> and place them in `tools\bin\` (copied next to the app on build). Review the license before redistributing a build that bundles them.
+Restore points need `wimlib-imagex.exe` and `libwim-15.dll` (wimlib 1.14.x, **GPLv3+ for the command-line tool**). They are not in this repository, and nothing of wimlib or the Windows ADK is redistributed with the app: **Set up recovery** downloads wimlib 1.14.5 from <https://wimlib.net> (the file is checked against a pinned SHA-256) into `tools\bin\`, and the ADK from Microsoft (the installers must carry a valid Microsoft signature before they are run). You can also place the two wimlib files in `tools\bin\` yourself. Review the licenses before redistributing a build that bundles them.
 
 Lab helpers for a Hyper-V test VM are in `tools/lab`.
 

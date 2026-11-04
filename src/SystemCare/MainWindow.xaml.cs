@@ -13,16 +13,20 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitSchedule();
         RefreshText();
         RefreshDisks();
         _ = LoadAppsAsync();
         _ = RpLoadAsync(false);
+        _ = RefreshScheduleStatusAsync();
+        _ = LoadBitLockerAsync();
     }
 
     private void LanguageClick(object sender, RoutedEventArgs e)
     {
         English = !English;
         RefreshText(); RefreshDisks();
+        SyncBootLanguage();
     }
 
     private void NavChanged(object sender, RoutedEventArgs e)

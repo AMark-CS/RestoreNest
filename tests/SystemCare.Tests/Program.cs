@@ -68,3 +68,57 @@ var rpArgs = RestorePoints.BuildScriptArguments("New-RestorePoint.ps1", new[] { 
 Check(rpArgs[^1] == "D:; calc" && rpArgs.Contains("-File"), "script arguments stay separate");
 Console.WriteLine("Restore point UI checks passed.");
 Check(RestorePoints.IsModuleNoise("VERBOSE: Exporting function 'Get-Disk'.") && !RestorePoints.IsModuleNoise("VERBOSE: Captured in 5 s"), "module import noise filtered from log");
+
+// Automatic protection settings and status
+var scheduleTemp = Path.Combine(Path.GetTempPath(), "rn-schedule-test-" + Guid.NewGuid().ToString("N")[..8]);
+Environment.SetEnvironmentVariable("RN_DATA", scheduleTemp);
+try
+{
+    Check(AutoProtection.Load() == ScheduleSettings.Default && !AutoProtection.Load().Enabled, "no settings file means switched off");
+    var windowsDrive = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
+    var saved = new ScheduleSettings(true, "biweekly", "03:30", "Friday", 15, 5, windowsDrive, false);
+    AutoProtection.Save(saved);
+    Check(AutoProtection.Load() == saved, "settings round trip through the shared JSON file");
+    Check(File.ReadAllText(AutoProtection.SettingsPath).Contains("\"dayOfMonth\"") && File.ReadAllText(AutoProtection.SettingsPath).Contains("\"onlyOnAC\""), "JSON field names match the PowerShell side");
+    File.WriteAllText(AutoProtection.SettingsPath, "not json");
+    Check(AutoProtection.Load() == ScheduleSettings.Default, "unreadable settings fall back to the default");
+}
+finally { Environment.SetEnvironmentVariable("RN_DATA", null); if (Directory.Exists(scheduleTemp)) Directory.Delete(scheduleTemp, true); }
+var okSettings = ScheduleSettings.Default with { Enabled = false };
+Check(okSettings.Validate() is null, "switched-off default is valid without a destination");
+Check((okSettings with { Frequency = "hourly" }).Validate() == "frequency" && (okSettings with { Time = "25:00" }).Validate() == "time" && (okSettings with { Time = "2:00" }).Validate() == "time", "bad frequency or time rejected");
+Check((okSettings with { DayOfWeek = "Funday" }).Validate() == "day" && (okSettings with { DayOfMonth = 29 }).Validate() == "dayOfMonth", "bad day rejected");
+Check((okSettings with { Keep = 0 }).Validate() == "keep" && (okSettings with { Keep = 31 }).Validate() == "keep" && (okSettings with { Keep = 30 }).Validate() is null, "keep must be 1 to 30");
+Check((okSettings with { Enabled = true, Destination = "" }).Validate() == "destination:format", "enabled needs a destination");
+Check((okSettings with { Enabled = true, Destination = "relative" }).Validate() == "destination:format", "relative destination rejected");
+Check(AutoProtection.CheckDestination(Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))! + "Backups") == "windows-drive", "the Windows partition is rejected");
+Check(AutoProtection.CheckDestination("Q:\\") is "not-ready" or "windows-drive", "a missing drive is rejected");
+var statusObject = new { registered = true, state = "Ready", nextRunUtc = "2026-11-08T18:00:00.0000000Z", taskAction = "-NoProfile -File \"C:\\App\\tools\\Invoke-ScheduledRestorePoint.ps1\"", last = new { lastRunUtc = "2026-11-01T18:00:00.0000000Z", code = "ok", detail = "20261101-180000", lastSuccessUtc = "2026-11-01T18:00:00.0000000Z", pointCount = 3, removed = Array.Empty<string>() } };
+var statusJson = "warning text" + Environment.NewLine + System.Text.Json.JsonSerializer.Serialize(statusObject) + Environment.NewLine;
+var parsedStatus = AutoProtection.ParseStatus(statusJson);
+Check(parsedStatus is { Registered: true, Last: { Code: "ok", PointCount: 3 } } && AutoProtection.ParseStatus("garbage") is null && AutoProtection.ParseStatus("{broken") is null, "scheduler status parsed");
+Check(parsedStatus!.TaskAction!.Contains("Invoke-ScheduledRestorePoint.ps1") && AutoProtection.TaskPointsElsewhere(parsedStatus) == !parsedStatus.TaskAction.Contains(AutoProtection.ScriptPath, StringComparison.OrdinalIgnoreCase), "a task pointing at another copy of the scripts is detected");
+var enabledSettings = okSettings with { Enabled = true, Destination = "D:\\" };
+Check(AutoProtection.Describe(okSettings, parsedStatus, false).Contains("关闭") && AutoProtection.Describe(okSettings, parsedStatus, true).Contains("off"), "switched-off text in both languages");
+Check(AutoProtection.Describe(enabledSettings, parsedStatus, true).Contains("Next automatic restore point") && AutoProtection.Describe(enabledSettings, parsedStatus, false).Contains("成功"), "next run and last success are described");
+Check(AutoProtection.Describe(enabledSettings, parsedStatus with { Last = parsedStatus.Last! with { Code = "no-space", Detail = "need 9 GiB" } }, false).Contains("最新的还原点已保留"), "no-space text says the newest point was kept");
+Check(AutoProtection.Describe(enabledSettings, parsedStatus with { Registered = false }, true).Contains("Save settings"), "unregistered task asks to save");
+Check(AutoProtection.Describe(enabledSettings, null, true).Contains("Could not read"), "unreadable status handled");
+Console.WriteLine("Automatic protection checks passed.");
+
+// Recovery setup progress
+Check(RestorePoints.ParseStep("RN_STEP 2/5 adk") is (2, 5, "adk") && RestorePoints.ParseStep("RN_STEP 4/5 bootentry") is (4, 5, "bootentry"), "setup steps parsed");
+Check(RestorePoints.ParseStep("Downloading the Windows ADK installer") is null && RestorePoints.ParseStep("RN_STEP x/5 adk") is null && RestorePoints.ParseStep("") is null, "other output lines are not steps");
+Check(RestorePoints.StepText((2, 5, "adk"), true).StartsWith("[2/5] Installing") && RestorePoints.StepText((2, 5, "adk"), false).Contains("ADK"), "step text in both languages");
+Check(RestorePoints.StepText((5, 5, "done"), false) == "[5/5] 完成", "last step text");
+Console.WriteLine("Recovery setup progress checks passed.");
+
+// BitLocker help
+var goodKey = "398706-073337-291610-054714-140228-593967-459360-006688";
+var blJson = "warning text" + Environment.NewLine + System.Text.Json.JsonSerializer.Serialize(new { protectionOn = true, recoveryPasswords = new[] { goodKey, "not-a-key", goodKey } }) + Environment.NewLine;
+var bl = BitLockerInfo.Parse(blJson);
+Check(bl is { ProtectionOn: true } && bl.ValidPasswords.Length == 1 && bl.ValidPasswords[0] == goodKey, "BitLocker info parsed, junk and duplicates dropped");
+Check(BitLockerInfo.Parse("garbage") is null && BitLockerInfo.Parse("{broken") is null && BitLockerInfo.Parse("") is null, "bad BitLocker output ignored");
+Check(BitLockerInfo.Parse("{\"protectionOn\":false,\"recoveryPasswords\":[]}") is { ProtectionOn: false, RecoveryPasswords.Length: 0 }, "unprotected drive parsed");
+Check(bl!.KeyFileText(true, "C:").Contains(goodKey) && bl.KeyFileText(false, "C:").Contains("BitLocker 恢复密码") && !bl.KeyFileText(true, "C:").Contains("not-a-key"), "key file text holds only valid passwords");
+Console.WriteLine("BitLocker help checks passed.");

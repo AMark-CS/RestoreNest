@@ -14,8 +14,8 @@
 param(
     [Parameter(Mandatory)][string]$Destination,
     [string]$Name,
-    [string]$WimlibPath = (Join-Path $PSScriptRoot 'bin\wimlib-imagex.exe'),
-    [string]$SystemDrive = $env:SystemDrive.TrimEnd(':'),
+    [string]$WimlibPath,      # default: bin\wimlib-imagex.exe next to this script
+    [string]$SystemDrive,     # default: the Windows drive
     [switch]$DryRun,
     [switch]$SkipAdminCheck,
     # Offline capture (e.g. from WinPE, where the Windows volume is not in use and VSS does not exist).
@@ -23,7 +23,12 @@ param(
     [ValidateSet('LZX', 'XPRESS', 'LZMS', 'None')][string]$Compression = 'LZX'
 )
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'RestorePoint.Common.ps1')
+# The folder comes from the invocation and nothing is computed in the parameter block: this also runs unattended as SYSTEM
+# (Invoke-ScheduledRestorePoint.ps1), where $PSScriptRoot in parameter defaults was empty.
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $WimlibPath) { $WimlibPath = Join-Path $scriptDir 'bin\wimlib-imagex.exe' }
+if (-not $SystemDrive) { $SystemDrive = $env:SystemDrive.TrimEnd(':') }
+. (Join-Path $scriptDir 'RestorePoint.Common.ps1')
 
 if (-not $DryRun -and -not $SkipAdminCheck) {
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -38,9 +43,9 @@ if (-not $DryRun -and $Destination -match '\A[A-Za-z]:') {
     $guess = if ($Destination.TrimEnd('\').Length -le 2) { Join-Path $Destination 'RestoreNest' } else { $Destination.TrimEnd('\') }
     foreach ($gone in @(Remove-RnStalePartials -Root $guess)) { Write-Verbose "Removed stale partial capture: $gone" }
 }
-# LZX typically shrinks well, but demand 60% of used space as a conservative floor; wimlib will fail loudly if still short.
-$root = Resolve-RnDestination -Destination $Destination -SystemDrive $SystemDrive -RequiredBytes ([long]($used * 0.6))
+$root = Resolve-RnDestination -Destination $Destination -SystemDrive $SystemDrive -RequiredBytes (Get-RnRequiredBytes -SystemDrive $SystemDrive)
 $source = Get-RnVolumeIdentity -DriveLetter $SystemDrive
+if (-not $DryRun -and (Test-RnCaptureRunning -Root $root)) { throw 'Another restore point is being created right now (a scheduled or manual capture is running). Try again when it has finished.' }
 $id = New-RnRestorePointId
 $final = Join-Path $root $id
 $partial = "$final.partial"

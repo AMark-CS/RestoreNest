@@ -42,26 +42,37 @@ if ($LASTEXITCODE -ne 0) {
 $mount = Join-Path $WorkDir 'mount'
 $wim = Join-Path $WorkDir 'media\sources\boot.wim'
 dism.exe /Mount-Image /ImageFile:$wim /Index:1 /MountDir:$mount
-if ($LASTEXITCODE -ne 0) { throw 'Mount failed.' }
+if ($LASTEXITCODE -ne 0) {
+    dism.exe /Cleanup-Mountpoints | Out-Null
+    Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue   # a failed mount must not block the next attempt
+    throw 'Mount failed.'
+}
 $committed = $false
 try {
     # Order matters: WMI before NetFx/Scripting/PowerShell; StorageWMI and DismCmdlets after PowerShell.
     # WinPE-SecureStartup provides manage-bde, which Restore.ps1 needs to see and unlock a BitLocker-locked Windows partition.
-    foreach ($name in 'WinPE-WMI', 'WinPE-SecureStartup', 'WinPE-NetFx', 'WinPE-Scripting', 'WinPE-PowerShell', 'WinPE-StorageWMI', 'WinPE-DismCmdlets') {
+    # WinPE-FontSupport-ZH-CN lets the recovery screen show Chinese text (the add-on has no English language package for it).
+    foreach ($name in 'WinPE-WMI', 'WinPE-SecureStartup', 'WinPE-NetFx', 'WinPE-Scripting', 'WinPE-PowerShell', 'WinPE-StorageWMI', 'WinPE-DismCmdlets', 'WinPE-FontSupport-ZH-CN') {
         # Build each argument first: `/PackagePath:(Join-Path ...)` reaches dism.exe as two arguments ("/PackagePath:" and the path).
         $basePackage = Join-Path $packages "$name.cab"
         $languagePackage = Join-Path $packages "en-us\$($name)_en-us.cab"
-        dism.exe /Image:$mount /Add-Package "/PackagePath:$basePackage" "/PackagePath:$languagePackage"
+        if (Test-Path -LiteralPath $languagePackage) { dism.exe /Image:$mount /Add-Package "/PackagePath:$basePackage" "/PackagePath:$languagePackage" }
+        else { dism.exe /Image:$mount /Add-Package "/PackagePath:$basePackage" }
         if ($LASTEXITCODE -ne 0) { throw "Adding $name failed ($LASTEXITCODE)." }
     }
     $dest = Join-Path $mount 'restorenest'
     New-Item -ItemType Directory -Path $dest | Out-Null
-    foreach ($script in 'Restore.ps1', 'RestorePoint.Common.ps1', 'RestorePlan.Common.ps1', 'Install-BootEntry.ps1') { Copy-Item (Join-Path $PSScriptRoot $script) $dest }
+    foreach ($script in 'Restore.ps1', 'Restore-Gui.ps1', 'RestorePoint.Common.ps1', 'RestorePlan.Common.ps1', 'Install-BootEntry.ps1') { Copy-Item (Join-Path $PSScriptRoot $script) $dest }
     Copy-Item $WimlibPath $dest
     Copy-Item (Join-Path (Split-Path $WimlibPath) 'libwim-15.dll') $dest
     $startnet = Join-Path $mount 'Windows\System32\startnet.cmd'
+    # The recovery screen first; if it cannot start or the user asks for the command line, the text version of Restore.ps1.
     Set-Content -LiteralPath $startnet -Encoding ascii -Value @(
         'wpeinit',
+        'powershell -NoProfile -ExecutionPolicy Bypass -File X:\restorenest\Restore-Gui.ps1',
+        'if errorlevel 1 goto text',
+        'exit',
+        ':text',
         'powershell -NoProfile -ExecutionPolicy Bypass -NoExit -Command "cd X:\restorenest; Write-Host ''RestoreNest Recovery'' ; Write-Host ''Dry run: .\Restore.ps1''; Write-Host ''Restore: .\Restore.ps1 -Id <id> -Execute'' ; .\Restore.ps1"')
     dism.exe /Unmount-Image /MountDir:$mount /Commit
     if ($LASTEXITCODE -ne 0) { throw 'Commit failed.' }
@@ -76,4 +87,5 @@ finally {
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 Copy-Item $wim (Join-Path $OutDir 'boot.wim')
 Copy-Item (Join-Path $WorkDir 'media\boot\boot.sdi') (Join-Path $OutDir 'boot.sdi')
+Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue   # about 1 GB; a second run must not find it
 Write-Host "Built $OutDir\boot.wim and boot.sdi. Verify by booting it in a VM before using Install-BootEntry.ps1."

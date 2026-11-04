@@ -16,5 +16,7 @@
     <Compile Include="../../src/SystemCare/PowerShell.cs" Link="PowerShell.cs" />
     <Compile Include="../../src/SystemCare/AppxApps.cs" Link="AppxApps.cs" />
     <Compile Include="../../src/SystemCare/LeftoverScanner.cs" Link="LeftoverScanner.cs" />
+    <Compile Include="../../src/SystemCare/AutoProtection.cs" Link="AutoProtection.cs" />
+    <Compile Include="../../src/SystemCare/RecoveryHelp.cs" Link="RecoveryHelp.cs" />
   </ItemGroup>
 </Project>
