@@ -55,6 +55,12 @@ public partial class MainWindow : Window
         DisksTitle.Text = T("磁盘概览", "Disks"); DisksSubtitle.Text = T("各磁盘的已用空间与剩余空间", "Used and free space of each drive");
         RefreshDisksButton.Content = T("刷新", "Refresh");
         DiskVolume.FreeWord = T("可用", "free");
+        DiskWords.System = T("Windows 系统盘", "Windows");
+        DiskWords.Removable = T("可移动", "Removable"); DiskWords.Network = T("网络", "Network");
+        DiskWords.RestoreFormat = T("{0} 个还原点 · {1}", "{0} restore points · {1}");
+        DiskWords.DiskFormat = T("磁盘 {0}", "Disk {0}");
+        DiskWords.UsageFormat = T("已用 {0}（{1}%），共 {2}", "{0} used ({1}%) of {2}");
+        SumTotalLabel.Text = T("总容量", "Total capacity"); SumUsedLabel.Text = T("已使用", "Used"); SumFreeLabel.Text = T("剩余", "Free");
         UpdateSelectionCount();
     }
 

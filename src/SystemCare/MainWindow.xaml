@@ -131,27 +131,49 @@
           <StackPanel><TextBlock x:Name="DisksTitle" FontFamily="Segoe UI Variable Display, Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="DisksSubtitle" Foreground="{StaticResource InkSoft}" Margin="0,4,0,0"/></StackPanel>
         </DockPanel>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-          <ItemsControl x:Name="DiskList">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="20,16">
-                  <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoft}" VerticalAlignment="Top"><TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                    <StackPanel Grid.Column="1">
-                      <StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Display}" FontSize="16" FontWeight="SemiBold"/><Border Background="#EEF1F6" CornerRadius="5" Padding="7,1" Margin="10,2,0,0"><TextBlock Text="{Binding Format}" FontSize="11" Foreground="{StaticResource InkSoft}"/></Border></StackPanel>
-                      <ProgressBar x:Name="Bar" Minimum="0" Maximum="100" Value="{Binding UsedPercent, Mode=OneWay}" Margin="0,10,0,8" AutomationProperties.Name="{Binding Summary}"/>
-                      <TextBlock Text="{Binding Summary}" FontSize="12.5" Foreground="{StaticResource InkSoft}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" HorizontalAlignment="Right" Margin="20,0,0,0"><TextBlock Text="{Binding FreeText}" FontFamily="Segoe UI Variable Display, Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="{Binding FreeLabel}" FontSize="11.5" Foreground="{StaticResource InkSoft}" HorizontalAlignment="Right"/></StackPanel>
-                  </Grid>
-                </Border>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding IsCritical}" Value="True"><Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Danger}"/></DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <StackPanel>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14" Padding="20,16" Background="{StaticResource AccentSoft}" BorderBrush="Transparent">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock x:Name="SumTotalLabel" FontSize="12" Foreground="{StaticResource InkSoft}"/><TextBlock x:Name="SumTotal" FontSize="22" FontWeight="SemiBold" Margin="0,2,0,0"/></StackPanel>
+                <StackPanel Grid.Column="1"><TextBlock x:Name="SumUsedLabel" FontSize="12" Foreground="{StaticResource InkSoft}"/><TextBlock x:Name="SumUsed" FontSize="22" FontWeight="SemiBold" Margin="0,2,0,0"/></StackPanel>
+                <StackPanel Grid.Column="2"><TextBlock x:Name="SumFreeLabel" FontSize="12" Foreground="{StaticResource InkSoft}"/><TextBlock x:Name="SumFree" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Accent}" Margin="0,2,0,0"/></StackPanel>
+              </Grid>
+            </Border>
+            <ItemsControl x:Name="DiskList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="20,16">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoft}" VerticalAlignment="Top"><TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                      <StackPanel Grid.Column="1">
+                        <WrapPanel>
+                          <TextBlock Text="{Binding Display}" FontSize="16" FontWeight="SemiBold" Margin="0,0,10,4"/>
+                          <Border Background="#EEF1F6" CornerRadius="5" Padding="7,1" Margin="0,2,6,4"><TextBlock Text="{Binding Format}" FontSize="11" Foreground="{StaticResource InkSoft}"/></Border>
+                          <Border x:Name="SystemTag" Background="{StaticResource AccentSoft}" CornerRadius="5" Padding="7,1" Margin="0,2,6,4"><TextBlock Text="{Binding SystemBadge}" FontSize="11" Foreground="{StaticResource Accent}" FontWeight="SemiBold"/></Border>
+                          <Border x:Name="KindTag" Background="#EEF1F6" CornerRadius="5" Padding="7,1" Margin="0,2,6,4"><TextBlock Text="{Binding KindBadge}" FontSize="11" Foreground="{StaticResource InkSoft}"/></Border>
+                          <Border x:Name="RestoreTag" Background="#E4F6EE" CornerRadius="5" Padding="7,1" Margin="0,2,6,4"><TextBlock Text="{Binding RestoreBadge}" FontSize="11" Foreground="{StaticResource Ok}" FontWeight="SemiBold"/></Border>
+                        </WrapPanel>
+                        <ProgressBar x:Name="Bar" Minimum="0" Maximum="100" Value="{Binding UsedPercent, Mode=OneWay}" Margin="0,4,0,8" AutomationProperties.Name="{Binding Summary}"/>
+                        <TextBlock Text="{Binding UsageText}" FontSize="12.5" Foreground="{StaticResource InkSoft}"/>
+                        <TextBlock x:Name="HardwareLine" Text="{Binding HardwareText}" FontSize="12" Foreground="{StaticResource InkSoft}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" HorizontalAlignment="Right" Margin="20,0,0,0"><TextBlock Text="{Binding FreeText}" FontFamily="Segoe UI Variable Display, Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="{Binding FreeLabel}" FontSize="11.5" Foreground="{StaticResource InkSoft}" HorizontalAlignment="Right"/></StackPanel>
+                    </Grid>
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsWarning}" Value="True"><Setter TargetName="Bar" Property="Foreground" Value="#E0A100"/></DataTrigger>
+                    <DataTrigger Binding="{Binding IsCritical}" Value="True"><Setter TargetName="Bar" Property="Foreground" Value="{StaticResource Danger}"/></DataTrigger>
+                    <DataTrigger Binding="{Binding SystemBadge}" Value=""><Setter TargetName="SystemTag" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding KindBadge}" Value=""><Setter TargetName="KindTag" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding RestoreBadge}" Value=""><Setter TargetName="RestoreTag" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding HardwareText}" Value=""><Setter TargetName="HardwareLine" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
       </Grid>
     </Grid>

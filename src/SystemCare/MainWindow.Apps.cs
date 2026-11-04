@@ -16,7 +16,29 @@ public partial class MainWindow
         FilterApps();
     }
 
-    private void RefreshDisks() => DiskList.ItemsSource = DiskOverview.Get();
+    private int diskRefreshes;
+    private async void RefreshDisks()
+    {
+        var generation = ++diskRefreshes;
+        var volumes = DiskOverview.Get();
+        ShowDisks(volumes);
+        // The physical disk (model, SSD/HDD, health) takes a moment; the drives are already on screen.
+        var hardware = await DiskOverview.GetHardwareAsync();
+        if (generation != diskRefreshes || hardware.Count == 0) return;
+        var detailed = volumes.Select(v => hardware.TryGetValue(v.Root, out var h) ? v with { Hardware = h } : v).ToList();
+        Dispatcher.Invoke(() => { if (generation == diskRefreshes) ShowDisks(detailed); });   // not necessarily on the UI thread yet
+    }
+
+    private void ShowDisks(List<DiskVolume> volumes)
+    {
+        DiskList.ItemsSource = null;   // records with equal values would otherwise keep their old containers (and old language)
+        DiskList.ItemsSource = volumes;
+        var local = volumes.Where(v => v.DriveType != "Network").ToList();
+        SumTotal.Text = DiskVolume.FormatBytes(local.Sum(v => v.TotalBytes));
+        SumUsed.Text = DiskVolume.FormatBytes(local.Sum(v => v.UsedBytes));
+        SumFree.Text = DiskVolume.FormatBytes(local.Sum(v => v.FreeBytes));
+    }
+
     private void RefreshDisksClick(object sender, RoutedEventArgs e) => RefreshDisks();
 
     private static string[] ProtectedTrees() => new[] { Environment.GetFolderPath(Environment.SpecialFolder.Windows) }.Where(p => !string.IsNullOrEmpty(p)).ToArray();

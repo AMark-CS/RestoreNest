@@ -42,7 +42,7 @@
 <table>
   <tr>
     <td width="50%"><img src="docs/img/app/restore-en.png" alt="Restore points page with automatic schedule"><br><sub><b>Restore points:</b> storage location, recovery setup, automatic schedule.</sub></td>
-    <td width="50%"><img src="docs/img/app/disks-en.png" alt="Disk overview"><br><sub><b>Disks:</b> used and free space per drive.</sub></td>
+    <td width="50%"><img src="docs/img/app/disks-en.png" alt="Disk overview"><br><sub><b>Disks:</b> totals, usage per drive, physical disk model, SSD/HDD type and health, restore points stored on each drive.</sub></td>
   </tr>
   <tr>
     <td><img src="docs/img/app/restore-zh.png" alt="还原点页面"><br><sub><b>中文界面：</b>还原点与自动保护。</sub></td>

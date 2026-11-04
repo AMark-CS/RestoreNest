@@ -55,6 +55,26 @@ Check(Uninstaller.Plan(new InstalledApp("N", "", "", "")) is null, "no command, 
 Check(DiskOverview.FormatBytes(1536) == "1.5 KiB" && DiskOverview.FormatBytes(0) == "0 B", "size formatting");
 Check(new DiskVolume(@"C:\", "", "NTFS", 200, 50, "Fixed").UsedPercent == 75, "used percentage");
 Check(DiskOverview.Get().Count > 0, "at least one drive listed");
+{
+    var hardware = DiskOverview.ParseHardware("[{\"letter\":\"C\",\"disk\":2,\"model\":\"WD Blue SN570 500GB \",\"media\":\"SSD\",\"bus\":\"NVMe\",\"style\":\"GPT\",\"health\":\"Healthy\",\"size\":500107862016},{\"letter\":\"E\",\"disk\":1,\"model\":\"USB Stick\",\"media\":\"Unspecified\",\"bus\":\"USB\",\"style\":\"MBR\",\"health\":\"Healthy\",\"size\":1}]");
+    Check(hardware.Count == 2 && hardware[@"C:\"].DiskNumber == 2 && hardware[@"C:\"].Model == "WD Blue SN570 500GB" && hardware[@"C:\"].Kind == "NVMe SSD" && hardware[@"E:\"].Kind == "USB", "disk hardware JSON is parsed (array form)");
+    Check(DiskOverview.ParseHardware("{\"letter\":\"D\",\"disk\":0,\"model\":\"X\",\"media\":\"HDD\",\"bus\":\"SATA\",\"style\":\"GPT\",\"health\":\"Healthy\",\"size\":5}")[@"D:\"].Kind == "HDD", "disk hardware JSON is parsed (single object form)");
+    Check(DiskOverview.ParseHardware("not json").Count == 0 && DiskOverview.ParseHardware("").Count == 0, "bad disk hardware output gives an empty map");
+    Check(DiskOverview.KindOf("Unspecified", "SATA") == "SATA" && DiskOverview.KindOf("", "Unknown") == "" && DiskOverview.KindOf("SSD", "USB") == "USB SSD", "disk kind names");
+    var shown = new DiskVolume(@"C:\", "Base", "NTFS", 200, 20, "Fixed") { Hardware = hardware[@"C:\"], RestorePoints = 2, RestorePointBytes = 2048 };
+    Check(shown.IsCritical && !shown.IsWarning && new DiskVolume(@"D:\", "", "NTFS", 100, 20, "Fixed").IsWarning, "usage tiers: warning from 75%, critical from 90%");
+    Check(shown.HardwareText.Contains("NVMe SSD") && shown.HardwareText.Contains("GPT") && new DiskVolume(@"D:\", "", "NTFS", 1, 1, "Fixed").HardwareText == "", "hardware line is empty until known");
+    Check(shown.RestoreBadge.Contains("2") && new DiskVolume(@"D:\", "", "NTFS", 1, 1, "Fixed").RestoreBadge == "", "restore point badge");
+    var tmp = Path.Combine(Path.GetTempPath(), "rn-dv-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(tmp, "20261101-020000")); File.WriteAllBytes(Path.Combine(tmp, "20261101-020000", "system.wim"), new byte[100]);
+        Directory.CreateDirectory(Path.Combine(tmp, "20261102-020000.partial")); File.WriteAllBytes(Path.Combine(tmp, "20261102-020000.partial", "system.wim"), new byte[50]);
+        Directory.CreateDirectory(Path.Combine(tmp, "20261103-020000"));   // no image: not a restore point
+        Check(DiskOverview.CountRestorePoints(tmp) == (1, 100) && DiskOverview.CountRestorePoints(Path.Combine(tmp, "missing")) == (0, 0), "restore points are counted per drive (partial and empty folders are not)");
+    }
+    finally { Directory.Delete(tmp, true); }
+}
 var appxJson = "[{\"N\":\"Microsoft.Foo\",\"F\":\"Microsoft.Foo_1.0.0.0_x64__8wekyb3d8bbwe\",\"V\":\"1.0.0.0\",\"P\":\"CN=X\"},{\"N\":\"Bad\",\"F\":\"x'; calc; '\",\"V\":\"\",\"P\":\"\"}]";
 Check(AppxApps.Parse(appxJson).Count == 1, "appx parsing drops unsafe package names");
 Check(AppxApps.Parse("not json").Count == 0, "appx bad json ignored");
