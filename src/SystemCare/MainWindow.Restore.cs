@@ -13,6 +13,7 @@ public partial class MainWindow
         RpSubtitle.Text = T("为 Windows 分区创建映像，出问题时可从启动菜单还原。", "Image the Windows partition now; restore it from the boot menu if something goes wrong.");
         RpPathLabel.Text = T("保存位置", "Storage location");
         RpName.ToolTip = T("还原点名称（可选）", "Restore point name (optional)");
+        RpName.Tag = T("给这个还原点起个名字（可选），例如：装驱动之前", "Name this restore point (optional), e.g. before driver update");
         RpCreateButton.Content = T("创建还原点", "Create restore point"); RpRefreshButton.Content = T("刷新", "Refresh");
         RpVerifyButton.Content = T("校验全部", "Verify all"); RpInstallBootButton.Content = T("设置恢复环境", "Set up recovery"); RpRemoveBootButton.Content = T("移除启动项", "Remove boot entry");
         RpListTitle.Text = T("已有还原点", "Existing restore points");

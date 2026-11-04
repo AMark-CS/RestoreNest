@@ -6,7 +6,16 @@
     <Border Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="16,24,16,18">
         <StackPanel DockPanel.Dock="Top" Margin="6,0,0,28" Orientation="Horizontal">
-          <Border Width="34" Height="34" CornerRadius="9" Background="{StaticResource Accent}"><TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+          <Viewbox Width="38" Height="38">
+            <Canvas Width="256" Height="256">
+              <Border Width="256" Height="256" CornerRadius="58"><Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#4F86FF" Offset="0"/><GradientStop Color="#1F4FD8" Offset="1"/></LinearGradientBrush></Border.Background></Border>
+              <Path Data="M175.6,71.3 A74,74 0 1 1 80.4,71.3" Stroke="White" StrokeThickness="16" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+              <Polygon Points="103,52 85,86 62,66" Fill="White" Stroke="White" StrokeThickness="6" StrokeLineJoin="Round"/>
+              <Ellipse Canvas.Left="109" Canvas.Top="87" Width="38" Height="50" Fill="#CFE0FF"/>
+              <Path Data="M78,124 Q128,214 178,124 Q128,144 78,124 Z" Fill="White" Stroke="White" StrokeThickness="8" StrokeLineJoin="Round"/>
+              <Path Data="M92,142 Q128,160 164,142 M104,158 Q128,172 152,158" Stroke="#2A5BE8" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+            </Canvas>
+          </Viewbox>
           <StackPanel Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="RestoreNest" FontSize="17" FontWeight="SemiBold"/><TextBlock x:Name="Tagline" FontSize="11" Foreground="{StaticResource InkSoft}"/></StackPanel>
         </StackPanel>
         <StackPanel DockPanel.Dock="Bottom">

@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         AppsTitle.Text = T("软件管理", "Apps");
         AppsSubtitle.Text = T("勾选要卸载的软件。卸载前会尝试创建系统还原点；卸载后列出残留候选，由你确认再删除。", "Tick the apps to remove. A system restore point is attempted first; leftover candidates are listed for you to confirm.");
         Search.ToolTip = T("按名称或发布者搜索", "Search by name or publisher");
+        Search.Tag = T("搜索软件名称或发布者", "Search apps by name or publisher");
         NameColumn.Header = T("名称", "Name"); PublisherColumn.Header = T("发布者", "Publisher"); VersionColumn.Header = T("版本", "Version"); SizeColumn.Header = T("大小", "Size");
         UninstallButton.Content = T("卸载所选软件", "Uninstall selected"); ReviewButton.Content = T("检查所选软件", "Review selection");
 
