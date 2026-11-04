@@ -84,7 +84,7 @@ If the Windows drive is protected by **BitLocker**, save the 48-digit recovery p
 
 ## Status: what "unverified" means
 
-The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), plus one Windows 11 image (restored from the Windows 10 WinPE), and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md); acceptance list: [docs/backup-engine.md](docs/backup-engine.md).
+The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), plus one Windows 11 image (restored from the Windows 10 WinPE), and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md).
 
 ## Build and run
 

@@ -56,6 +56,23 @@ Check(DiskOverview.FormatBytes(1536) == "1.5 KiB" && DiskOverview.FormatBytes(0)
 Check(new DiskVolume(@"C:\", "", "NTFS", 200, 50, "Fixed").UsedPercent == 75, "used percentage");
 Check(DiskOverview.Get().Count > 0, "at least one drive listed");
 {
+    // An installer that records no InstallLocation: the folder holding its uninstaller is offered, but only inside an application folder.
+    var programs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs");
+    var holder = Path.Combine(programs, "RnLeftoverTest-" + Guid.NewGuid().ToString("N"));
+    var temp = Path.Combine(Path.GetTempPath(), "RnLeftoverTemp-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(holder); Directory.CreateDirectory(temp);
+        InstalledApp Make(string folder) => new("Rn Leftover Test", "Nobody", "1.0", "", null, "\"" + Path.Combine(folder, "uninstall.exe") + "\"", "", 0, "");
+        var windows = new[] { Environment.GetFolderPath(Environment.SpecialFolder.Windows) };
+        var found = LeftoverScanner.Scan(Make(holder), Array.Empty<string>(), windows, Array.Empty<string>());
+        Check(found.Any(f => string.Equals(f.Path, holder, StringComparison.OrdinalIgnoreCase)), "leftover folder is found from the uninstaller's path when InstallLocation is empty");
+        Check(!LeftoverScanner.Scan(Make(temp), Array.Empty<string>(), windows, Array.Empty<string>()).Any(f => string.Equals(f.Path, temp, StringComparison.OrdinalIgnoreCase)), "a folder outside the application folders is never offered that way");
+        Check(!LeftoverScanner.Scan(Make(holder), new[] { holder }, windows, Array.Empty<string>()).Any(), "a folder another app uses is not offered");
+    }
+    finally { if (Directory.Exists(holder)) Directory.Delete(holder, true); if (Directory.Exists(temp)) Directory.Delete(temp, true); }
+}
+{
     var hardware = DiskOverview.ParseHardware("[{\"letter\":\"C\",\"disk\":2,\"model\":\"WD Blue SN570 500GB \",\"media\":\"SSD\",\"bus\":\"NVMe\",\"style\":\"GPT\",\"health\":\"Healthy\",\"size\":500107862016},{\"letter\":\"E\",\"disk\":1,\"model\":\"USB Stick\",\"media\":\"Unspecified\",\"bus\":\"USB\",\"style\":\"MBR\",\"health\":\"Healthy\",\"size\":1}]");
     Check(hardware.Count == 2 && hardware[@"C:\"].DiskNumber == 2 && hardware[@"C:\"].Model == "WD Blue SN570 500GB" && hardware[@"C:\"].Kind == "NVMe SSD" && hardware[@"E:\"].Kind == "USB", "disk hardware JSON is parsed (array form)");
     Check(DiskOverview.ParseHardware("{\"letter\":\"D\",\"disk\":0,\"model\":\"X\",\"media\":\"HDD\",\"bus\":\"SATA\",\"style\":\"GPT\",\"health\":\"Healthy\",\"size\":5}")[@"D:\"].Kind == "HDD", "disk hardware JSON is parsed (single object form)");

@@ -19,6 +19,11 @@ public static class LeftoverScanner
             if (RemovalReview.Assess(path, others, trees, roots) == "unverified") found.Add(new(path, reason));
         }
         Add(app.Location, "install");
+        // Many installers (NSIS among them) leave InstallLocation empty. Their uninstaller then still tells where the program lived:
+        // offer the folder that holds it, but only when it sits directly inside an application folder (never Temp or a drive root).
+        foreach (var command in new[] { app.UninstallString, app.QuietUninstallString })
+            if (Uninstaller.Parse(command) is { } parsed && System.IO.Path.GetDirectoryName(parsed.File) is { Length: > 0 } holder && IsDirectApplicationFolder(holder))
+                Add(holder, "install");
         var bases = new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -31,6 +36,19 @@ public static class LeftoverScanner
                 // A publisher folder is shared by all of that publisher's products, so only offer it for the app's own name.
                 if (!name.Equals(app.Publisher, StringComparison.OrdinalIgnoreCase)) Add(System.IO.Path.Combine(baseDir, name), "data");
         return found;
+    }
+
+    private static bool IsDirectApplicationFolder(string folder)
+    {
+        var parent = System.IO.Path.GetDirectoryName(folder.TrimEnd('\\'));
+        if (string.IsNullOrEmpty(parent)) return false;
+        var homes = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs")
+        };
+        return homes.Any(home => !string.IsNullOrEmpty(home) && string.Equals(parent.TrimEnd('\\'), home.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsPlainFolderName(string name) =>
