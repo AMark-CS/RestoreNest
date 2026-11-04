@@ -1,8 +1,60 @@
-# RestoreNest
+<p align="center">
+  <img src="docs/img/logo.svg" width="112" alt="RestoreNest logo">
+</p>
 
-Windows 10/11 maintenance tool: **manage installed software and disk space, and create restore points you can boot into a recovery environment to restore.**
+<h1 align="center">RestoreNest</h1>
 
-**Version 0.1.0: first runnable preview.** Parts are verified, parts are not; read "Status" before trusting it with data.
+<p align="center">
+  <b>Take a snapshot of Windows on a schedule. Go back to it with one click, even when Windows will not start.</b><br>
+  Also lists and uninstalls installed software and shows disk usage.
+</p>
+
+<p align="center">
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-2F6BFF?logo=windows&logoColor=white">
+  <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white">
+  <img alt="Status: experimental preview" src="https://img.shields.io/badge/status-experimental%20preview-orange">
+  <img alt="Tested in VMs only" src="https://img.shields.io/badge/tested-in%20VMs%2C%20not%20on%20real%20hardware-lightgrey">
+</p>
+
+<p align="center">
+  <a href="#why-restorenest">Why</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#how-to-use-it-for-a-non-technical-user">How to use</a> ·
+  <a href="#what-it-does">Features</a> ·
+  <a href="#status-what-unverified-means">Status</a> ·
+  <a href="#build-and-run">Build</a> ·
+  <a href="#安全说明">中文说明</a>
+</p>
+
+> **Version 0.1.0: first runnable preview.** Parts are verified in virtual machines, parts are not, and nothing has run on physical hardware. Read [Status](#status-what-unverified-means) before trusting it with data.
+
+## Why RestoreNest
+
+- **Set it and forget it.** Pick how often (daily to monthly), at what time and how many to keep. Old points are removed automatically, also when the drive is full, but the newest one is always kept.
+- **Works when Windows does not.** A "RestoreNest Recovery" entry is added to the boot menu. Its recovery screen is a plain graphical page: choose a point in time, tick the box, restore.
+- **Your other drives stay untouched.** Only the Windows partition is restored. Restore points live on another drive or partition (the same physical disk is fine), never on the Windows drive.
+- **Careful by design.** Every image is checked with SHA-256 and `wimlib verify`; the restore refuses the partition that holds the backup and is a dry run unless you confirm.
+- **No manual tooling.** One click downloads wimlib and the Windows ADK from their official sites (signature and hash checked) and builds the recovery environment.
+- **English and Chinese**, in the app and in the recovery screen.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/app/restore-en.png" alt="Restore points page with automatic schedule"><br><sub><b>Restore points:</b> storage location, recovery setup, automatic schedule.</sub></td>
+    <td width="50%"><img src="docs/img/app/disks-en.png" alt="Disk overview"><br><sub><b>Disks:</b> used and free space per drive.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/app/restore-zh.png" alt="还原点页面"><br><sub><b>中文界面：</b>还原点与自动保护。</sub></td>
+    <td><img src="docs/img/recovery/en-list.png" alt="Recovery screen: choose a point in time"><br><sub><b>Recovery screen</b> (boot menu): pick the point in time.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/recovery/en-confirm.png" alt="Recovery screen: confirm"><br><sub><b>Confirm</b> what will be lost, then start.</sub></td>
+    <td><img src="docs/img/recovery/en-key.png" alt="Recovery screen: BitLocker recovery password"><br><sub><b>BitLocker:</b> asks for the 48-digit recovery password if the drive is locked.</sub></td>
+  </tr>
+</table>
+
+<sub>The screenshots are rendered from the real app and recovery screen; the restore points in the recovery screens are demo data.</sub>
 
 ## What it does
 

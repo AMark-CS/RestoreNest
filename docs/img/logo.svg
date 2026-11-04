@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="RestoreNest logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F86FF"/>
+      <stop offset="1" stop-color="#1F4FD8"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <!-- restore arrow: a clockwise loop that is almost closed -->
+  <path d="M175.6 71.3 A74 74 0 1 1 80.4 71.3" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+  <polygon points="103,52 85,86 62,66" fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+  <!-- the nest: a pale egg sitting in a woven white nest -->
+  <ellipse cx="128" cy="112" rx="19" ry="25" fill="#CFE0FF"/>
+  <path d="M78 124 Q128 214 178 124 Q128 144 78 124 Z" fill="#fff" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M92 142 Q128 160 164 142 M104 158 Q128 172 152 158" fill="none" stroke="#2A5BE8" stroke-width="5" stroke-linecap="round"/>
+</svg>
