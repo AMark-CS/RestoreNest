@@ -83,4 +83,26 @@ try {
     } else { Write-Host 'wimlib not found; round trip skipped.' }
 }
 finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+# The recovery screen starts Restore.ps1 with Start-Process: the confirmation phrase has a space and must arrive as ONE argument.
+$argTmp = Join-Path ([IO.Path]::GetTempPath()) ('rn-args-' + [guid]::NewGuid().ToString('N') + ' with space')
+New-Item -ItemType Directory -Path $argTmp | Out-Null
+try {
+    $stub = Join-Path $argTmp 'Stub.ps1'
+    Set-Content -LiteralPath $stub -Encoding UTF8 -Value 'param([string]$Root, [string]$Id, [switch]$Execute, [string]$ConfirmText, [string]$WimlibPath, [string]$RecoveryPassword) "ROOT=[$Root] ID=[$Id] EXEC=[$Execute] CONFIRM=[$ConfirmText] WIM=[$WimlibPath] KEY=[$RecoveryPassword]"'
+    $outFile = Join-Path $argTmp 'out.txt'
+    $startArgs = Get-RnRestoreProcessArguments -ScriptPath $stub -Root 'D:\Rest Nest' -Id '20261104-224344' -WimlibPath 'X:estore nest\wimlib-imagex.exe' -RecoveryPassword '123456-234567-345678-456789-567890-678901-789012-890123'
+    $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $startArgs -PassThru -Wait -WindowStyle Hidden -RedirectStandardOutput $outFile
+    $line = (Get-Content -LiteralPath $outFile -Raw).Trim()
+    Check ($line -ceq 'ROOT=[D:\Rest Nest] ID=[20261104-224344] EXEC=[True] CONFIRM=[RESTORE 20261104-224344] WIM=[X:estore nest\wimlib-imagex.exe] KEY=[123456-234567-345678-456789-567890-678901-789012-890123]') "restore arguments reach Restore.ps1 intact (confirmation phrase is one argument): $line"
+    $plain = Get-RnRestoreProcessArguments -ScriptPath $stub -Root 'D:\RestoreNest' -Id '20261104-224344'
+    Check (-not ($plain -contains '-WimlibPath') -and -not ($plain -contains '-RecoveryPassword')) 'optional restore arguments are left out when not given'
+}
+finally { Remove-Item -LiteralPath $argTmp -Recurse -Force -ErrorAction SilentlyContinue }
+# The exit code of a process started for the recovery screen must be a real number (it was $null: a finished restore looked failed).
+$quick = Start-RnProcess -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-Command', 'exit 0')
+$quick.WaitForExit(30000) | Out-Null; Start-Sleep -Milliseconds 300
+Check ($quick.HasExited -and $null -ne $quick.ExitCode -and $quick.ExitCode -eq 0) 'Start-RnProcess keeps the exit code of a finished process (0)'
+$failing = Start-RnProcess -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-Command', 'exit 7')
+$failing.WaitForExit(30000) | Out-Null; Start-Sleep -Milliseconds 300
+Check ($failing.ExitCode -eq 7) 'Start-RnProcess keeps a non-zero exit code (7)'
 Write-Host 'Restore plan checks passed.'

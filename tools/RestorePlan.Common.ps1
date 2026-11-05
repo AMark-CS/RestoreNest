@@ -96,3 +96,31 @@ function Get-RnBootEntryPlan {
         Letter      = $Letter.ToUpperInvariant()
     }
 }
+
+# Command line for a restore run started from the graphical recovery screen. Start-Process joins an argument array with spaces and
+# adds no quotes, so "RESTORE 2026..." would reach Restore.ps1 as two words (the phrase "RESTORE" plus a stray argument) and the
+# confirmation could never match. Every value that can contain a space is wrapped in double quotes here.
+function Get-RnRestoreProcessArguments {
+    param([Parameter(Mandatory)][string]$ScriptPath, [Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Id,
+        [string]$WimlibPath, [string]$RecoveryPassword)
+    $quote = { param($text) '"' + ($text -replace '"', '') + '"' }
+    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (& $quote $ScriptPath), '-Root', (& $quote $Root), '-Id', (& $quote $Id),
+        '-Execute', '-ConfirmText', (& $quote "RESTORE $Id"))
+    if ($WimlibPath) { $arguments += @('-WimlibPath', (& $quote $WimlibPath)) }
+    if ($RecoveryPassword) { $arguments += @('-RecoveryPassword', (& $quote $RecoveryPassword)) }
+    $arguments
+}
+
+# Start-Process -PassThru without -Wait returns a Process whose ExitCode is $null after it exited, unless its handle was touched
+# while it ran. The recovery screen judged the finished restore by ExitCode, saw $null and showed "restore did not complete" for a
+# restore that had worked. Starting through this wrapper caches the handle, so ExitCode is real.
+function Start-RnProcess {
+    param([Parameter(Mandatory)][string]$FilePath, [string[]]$ArgumentList = @(), [string]$StdOut, [string]$StdErr)
+    $splat = @{ FilePath = $FilePath; PassThru = $true; WindowStyle = 'Hidden' }
+    if ($ArgumentList.Count -gt 0) { $splat.ArgumentList = $ArgumentList }
+    if ($StdOut) { $splat.RedirectStandardOutput = $StdOut }
+    if ($StdErr) { $splat.RedirectStandardError = $StdErr }
+    $process = Start-Process @splat
+    $null = $process.Handle
+    $process
+}

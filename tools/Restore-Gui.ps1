@@ -219,10 +219,8 @@ function Start-Restore {
     if ($Demo) { $script:demoTick = 0; return }
     $script:logFile = Join-Path $env:TEMP 'rn-restore-gui.log'; $errFile = "$script:logFile.err"
     Remove-Item $script:logFile, $errFile -Force -ErrorAction SilentlyContinue
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'Restore.ps1'), '-Root', $script:selected.Root, '-Id', $script:selected.Id, '-Execute', '-ConfirmText', "RESTORE $($script:selected.Id)")
-    if ($WimlibPath) { $arguments += @('-WimlibPath', $WimlibPath) }
-    if ($script:key) { $arguments += @('-RecoveryPassword', $script:key) }
-    $script:process = Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $script:logFile -RedirectStandardError $errFile
+    $arguments = Get-RnRestoreProcessArguments -ScriptPath (Join-Path $PSScriptRoot 'Restore.ps1') -Root $script:selected.Root -Id $script:selected.Id -WimlibPath $WimlibPath -RecoveryPassword $script:key
+    $script:process = Start-RnProcess -FilePath 'powershell.exe' -ArgumentList $arguments -StdOut $script:logFile -StdErr $errFile
 }
 
 function Read-LogTail($path, $bytes = 6000) {
