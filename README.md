@@ -61,7 +61,7 @@
 | Area | Feature | Status |
 |---|---|---|
 | Apps | List registry and Store apps with size, publisher, version; search; multi-select | Built, unit-tested, app launch smoke-tested |
-| Apps | Uninstall selected (MSI, registered uninstallers, Store apps); tries a Windows restore point first; lists leftover-folder candidates for you to confirm | Built and unit-tested; **not yet exercised against real installers in a VM** |
+| Apps | Uninstall selected (MSI, registered uninstallers, Store apps); tries a Windows restore point first; lists leftover-folder candidates for you to confirm | **VM-verified** with real installers (7-Zip MSI, Notepad++ NSIS, a Store app, restore point first); the leftover-scan fix found there has unit tests only |
 | Disks | Per-drive total / used / free overview | Built, tested |
 | Restore points | Create a WIM image of the Windows partition (VSS snapshot online, or offline from WinPE) to **any non-Windows NTFS drive or folder (D:, E:, same physical disk allowed)**; several points coexist; SHA-256 + `wimlib verify` | **VM-verified offline** (4.5 GiB image, hashes OK). Script logic unit-tested. **Online VSS capture also VM-verified** (captured in the live guest, restored, logged in; the 7,609 s VM time is emulation, not real hardware) |
 | Boot menu | `Install-BootEntry.ps1` adds a "RestoreNest Recovery" WinPE ramdisk entry (default OS and menu timeout preserved, BCD backed up first, removable) | **VM-verified**: install, boot into the recovery WinPE, remove. Also verified under Secure Boot, including selecting the entry with the keyboard. Not tested: TPM-bound BitLocker (the install prompt warns about the recovery key) |
@@ -103,4 +103,4 @@ Lab helpers for a Hyper-V test VM are in `tools/lab`.
 
 ## 安全说明
 
-0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载尚未用真实安装包在虚拟机中验证）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**Secure Boot 和密码保护的 BitLocker 卷也已在虚拟机中验证（BitLocker 系统分区还原需要恢复密码，还原后分区不再加密）；另有一个 Windows 11 镜像在虚拟机中验证通过（未开 Secure Boot/BitLocker）；但仍未验证 TPM 绑定的 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。
+0.1.x 是可运行的预览版。软件列表、卸载、磁盘概览可以使用（卸载已用真实安装包在虚拟机中验证；定时还原点和图形化恢复界面也已在虚拟机中跑通）。还原流程已在一个 Windows 10 虚拟机中端到端跑通：同一块盘上的 D 盘数据和分区布局保持不变，被破坏的系统还原后能启动到锁屏；启动菜单项可安装、可进入恢复环境、可移除。**Secure Boot 和密码保护的 BitLocker 卷也已在虚拟机中验证（BitLocker 系统分区还原需要恢复密码，还原后分区不再加密）；另有一个 Windows 11 镜像在虚拟机中验证通过（未开 Secure Boot/BitLocker）；但仍未验证 TPM 绑定的 BitLocker、未在真机验证，请勿用于重要数据。**还原脚本默认只做预检（不写入），仅格式化原 Windows 分区，不会触碰保存还原点的分区。使用 BitLocker 时，修改启动配置可能触发恢复密钥提示，请先备份密钥。wimlib 采用 GPLv3+，需自行下载放入 `tools\bin`。

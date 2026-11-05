@@ -131,6 +131,25 @@ Findings from running `Build-WinPE.ps1` for the first time (all fixed):
 - The image had no `manage-bde`, so `Restore.ps1` warned "BitLocker state could not be checked" and **could not unlock a BitLocker-locked Windows partition** (the unlock tests above used the hand-built WinPE, which had it). `WinPE-SecureStartup` is now part of the build; the rebuilt image has `manage-bde.exe`. The recovery-password unlock itself was not repeated with the rebuilt image.
 - The bootable media is not part of the output: the recovery entry is a ramdisk boot of `boot.wim` from the data partition, so the Windows boot manager of the installed system is used. In this run that was the Windows 10 (19041) boot manager loading the 26100 WinPE under enforcing Secure Boot, and it worked; the boot manager / `boot.wim` mismatch described under Secure Boot only concerned the USB test media.
 
+## Second round (2026-11-04 to 2026-11-05): scheduled capture, uninstall, one-click setup, graphical recovery
+
+Same QEMU/edk2 Secure Boot lab, Windows 10 22H2 guest.
+
+| Area | What was run | Result |
+|---|---|---|
+| Scheduled restore points | `Set-RestoreSchedule.ps1 -Apply` registers the SYSTEM task; the task was started and ran the whole chain (capture to the data partition, retention, status file) | PASS. Scripts run from the admin-only `%ProgramData%\RestoreNest\bin` copy. A too-small data partition was refused with the free-space message (nothing written), then grown and rerun. |
+| Uninstall with real installers | 7-Zip (MSI) and Notepad++ (NSIS) installed silently, removed through the app's own `Uninstaller`; a Store app removed with `Remove-AppxPackage`; a Windows restore point requested first | PASS for the listing, silent plans, exit codes, "gone from the list" and the Store removal. The leftover scan missed the NSIS install folder (empty `InstallLocation`); it now also offers the folder holding the uninstaller when that sits directly in Program Files / `LocalAppData\Programs`. That fix has unit tests but was **not rerun in the VM**. |
+| One-click setup | `Prepare-Recovery.ps1` (9 checks) | PASS. The ADK was already installed in the guest, so the silent ADK install and signature check on a fresh machine were not exercised. |
+| Graphical recovery screen in real WinPE | Booted from the boot menu entry; Chinese UI; list, confirmation, progress, real restore of the 60 GiB Windows partition, restart | The restore worked and the system booted afterwards (8 post-checks PASS: Secure Boot on, marker created after the point is gone, `winload.efi` present, booted into Windows not recovery, data partition hashes unchanged, one-time boot entry not sticky). |
+
+Bugs found in the graphical recovery screen (fixed, covered by regression tests):
+
+- The confirmation phrase `RESTORE <id>` reached the restore process unquoted, so `Start-Process` split it into two arguments and the restore refused to start. Arguments are now built and quoted by `Get-RnRestoreProcessArguments`.
+- `Start-Process -PassThru` returned a process whose `ExitCode` was empty (Windows PowerShell 5.1), so a restore that had **succeeded** was shown as "not finished". `Start-RnProcess` now caches the handle; the rerun shows the "Restore finished" page.
+- Minor: the button on the finished page read "Restart without restoring"; it now reads "Restart". (Wording only; the image was built before this change, so the new label itself was not seen in the VM.)
+
+Not covered in this round: the BitLocker prompt inside the graphical screen, and the ADK silent install on a clean machine.
+
 ## Bugs found by these runs (all fixed)
 
 - `bcdedit /store <file> /export` is rejected; offline stores are now backed up by copying the file.

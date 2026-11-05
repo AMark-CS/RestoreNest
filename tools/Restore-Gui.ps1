@@ -62,6 +62,7 @@ $text = @{
         keyBad = '恢复密码需要 48 位数字，请检查后重新输入。'; keyFail = '这个恢复密码没有解开系统盘，请核对后重新输入。'; keyGo = '解锁并还原'
         progTitle = '正在还原…'; progWarn = '请不要关闭电源，也不要拔掉保存还原点的磁盘。'
         phaseVerify = '正在检查还原点是否完好…'; phaseUnlock = '正在解锁系统盘…'; phasePrepare = '正在准备…'; phaseWrite = '正在写入系统文件…'; phaseBoot = '正在设置启动项…'
+        restartNow = '重新启动'
         doneTitle = '还原完成'; doneBody = '请点击“重新启动”。电脑启动后如果一切正常，就可以继续使用了。'
         failTitle = '还原没有完成'; failClean = '还原在开始写入之前就停止了，电脑上的内容没有被改动。下面是详细信息。你可以重试，或者重新启动回到 Windows。'; failWritten = '还原在中途停止了，C: 盘现在可能不完整。请先点“重试”，不要直接重启进入 Windows。你的还原点本身没有被改动。下面是详细信息。'; retry = '重试'
     }
@@ -78,6 +79,7 @@ $text = @{
         keyBad = 'The recovery password has 48 digits. Please check it and try again.'; keyFail = 'This recovery password did not unlock the drive. Please check it and try again.'; keyGo = 'Unlock and restore'
         progTitle = 'Restoring...'; progWarn = 'Do not switch the PC off or unplug the drive that holds the restore points.'
         phaseVerify = 'Checking that the restore point is intact...'; phaseUnlock = 'Unlocking the system drive...'; phasePrepare = 'Preparing...'; phaseWrite = 'Writing the system files...'; phaseBoot = 'Setting up the startup files...'
+        restartNow = 'Restart'
         doneTitle = 'Restore finished'; doneBody = 'Click "Restart". If the PC starts normally you can keep using it.'
         failTitle = 'The restore did not finish'; failClean = 'The restore stopped before anything was written, so your PC has not been changed. Details are below. You can try again or restart into Windows.'; failWritten = 'The restore stopped part-way and the C: drive may now be incomplete. Please click "Try again" first and do not restart into Windows yet. Your restore points themselves were not changed. Details are below.'; retry = 'Try again'
     }
@@ -245,8 +247,8 @@ function Get-Progress($log) {
 }
 
 function Show-Result($ok, $detail, $written = $false) {
-    if ($ok) { $lblDoneTitle.Text = T 'doneTitle'; $lblDoneTitle.ForeColor = $cInk; $lblDoneBody.Text = T 'doneBody'; $txtDetail.Visible = $false; $btnRetry.Visible = $false; $btnDoneAdvanced.Visible = $false }
-    else { $lblDoneTitle.Text = T 'failTitle'; $lblDoneTitle.ForeColor = $cDanger; $lblDoneBody.Text = $(if ($written) { T 'failWritten' } else { T 'failClean' }); $txtDetail.Text = $detail; $txtDetail.Visible = $true; $btnRetry.Visible = $true; $btnDoneAdvanced.Visible = $true }
+    if ($ok) { $lblDoneTitle.Text = T 'doneTitle'; $lblDoneTitle.ForeColor = $cInk; $lblDoneBody.Text = T 'doneBody'; $btnDoneReboot.Text = T 'restartNow'; $txtDetail.Visible = $false; $btnRetry.Visible = $false; $btnDoneAdvanced.Visible = $false }
+    else { $lblDoneTitle.Text = T 'failTitle'; $btnDoneReboot.Text = T 'reboot';$lblDoneTitle.ForeColor = $cDanger; $lblDoneBody.Text = $(if ($written) { T 'failWritten' } else { T 'failClean' }); $txtDetail.Text = $detail; $txtDetail.Visible = $true; $btnRetry.Visible = $true; $btnDoneAdvanced.Visible = $true }
     Show-Page $pDone
 }
 
