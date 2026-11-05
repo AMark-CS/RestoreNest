@@ -86,6 +86,17 @@ If the Windows drive is protected by **BitLocker**, save the 48-digit recovery p
 
 The restore path is the dangerous part. It has now been run end to end in a disposable VM (see below and [docs/vm-validation.md](docs/vm-validation.md)), but only on one Windows 10 image in a VM (also under Secure Boot and with a password-protected BitLocker volume), plus one Windows 11 image (restored from the Windows 10 WinPE), and never on physical hardware. Treat it as **experimental**: never run `Restore.ps1 -Execute` on a machine you cannot rebuild, and do not rely on it as your only backup. Engine notes: [docs/restore-point-engine.md](docs/restore-point-engine.md).
 
+## Install
+
+1. Download `RestoreNest-Setup-<version>.exe` from the [Releases page](https://github.com/atlasmarkz/RestoreNest/releases) and run it (it asks for administrator rights). The installer already contains the .NET runtime; nothing else has to be installed first.
+2. Start RestoreNest from the Start menu. Apps, uninstall and the disk overview work right away.
+3. To create restore points, copy `wimlib-imagex.exe` and `libwim-15.dll` (wimlib 1.14.x, GPLv3+, not bundled) into `<install folder>\tools\bin`.
+4. For recovery when Windows will not start, run `tools\Prepare-Recovery.ps1` from an elevated PowerShell in the install folder; it sets up the Windows ADK, builds the recovery image and adds the boot-menu entry.
+
+Uninstall from Settings > Apps. Restore points you created are on your own drive and are not removed.
+
+The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php) from `installer/RestoreNest.iss`.
+
 ## Build and run
 
 Requires the .NET 8 SDK and Windows. The app asks for administrator rights.

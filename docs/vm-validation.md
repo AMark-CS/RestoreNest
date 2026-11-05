@@ -148,6 +148,8 @@ Bugs found in the graphical recovery screen (fixed, covered by regression tests)
 - `Start-Process -PassThru` returned a process whose `ExitCode` was empty (Windows PowerShell 5.1), so a restore that had **succeeded** was shown as "not finished". `Start-RnProcess` now caches the handle; the rerun shows the "Restore finished" page.
 - Minor: the button on the finished page read "Restart without restoring"; it now reads "Restart". (Wording only; the image was built before this change, so the new label itself was not seen in the VM.)
 
+Installer (`RestoreNest-Setup-0.2.0.exe`, Inno Setup, self-contained): in the Windows 10 guest, which has **no .NET runtime**, a silent install (exit 0) put `SystemCare.exe` and the scripts in Program Files, created the empty `tools\bin` folder (wimlib is not bundled), the "Apps & features" entry and the Start menu and desktop shortcuts. The app started and was still running after 15 s. The silent uninstall (exit 0) removed the folder, the entry and the shortcuts: 17 checks PASS. Not covered: the wizard pages themselves (only silent mode was run), upgrading over an older version, and user-run Windows Defender / SmartScreen behaviour for an unsigned installer.
+
 Not covered in this round: the BitLocker prompt inside the graphical screen, and the ADK silent install on a clean machine.
 
 ## Bugs found by these runs (all fixed)
