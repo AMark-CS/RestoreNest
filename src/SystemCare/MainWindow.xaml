@@ -1,4 +1,4 @@
-<Window x:Class="SystemCare.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="RestoreNest" Width="1120" Height="740" MinWidth="860" MinHeight="560" Background="{StaticResource PageBg}" Foreground="{StaticResource Ink}" FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
+<Window x:Class="SystemCare.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="RestoreNest" Icon="app.ico" Width="1120" Height="740" MinWidth="860" MinHeight="560" Background="{StaticResource PageBg}" Foreground="{StaticResource Ink}" FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI" UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
   <Grid>
     <Grid.ColumnDefinitions><ColumnDefinition Width="232"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 

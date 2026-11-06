@@ -24,6 +24,8 @@ SolidCompression=yes
 UninstallDisplayName=RestoreNest
 UninstallDisplayIcon={app}\SystemCare.exe
 WizardStyle=modern
+CloseApplicationsFilter=SystemCare.exe
+SetupIconFile=..\src\SystemCare\app.ico
 ShowLanguageDialog=auto
 
 [Languages]

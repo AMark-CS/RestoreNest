@@ -7,9 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <Version>0.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="app.ico" />
     <!-- Scripts the app shells out to; wimlib-imagex.exe (GPLv3+) is deliberately not in the repo: place it in tools\bin. -->
     <Content Include="..\..\tools\New-RestorePoint.ps1;..\..\tools\Get-RestorePoint.ps1;..\..\tools\Restore.ps1;..\..\tools\Install-BootEntry.ps1;..\..\tools\Build-WinPE.ps1;..\..\tools\RestorePoint.Common.ps1;..\..\tools\RestorePlan.Common.ps1;..\..\tools\RestoreSchedule.Common.ps1;..\..\tools\Invoke-ScheduledRestorePoint.ps1;..\..\tools\Set-RestoreSchedule.ps1;..\..\tools\Restore-Gui.ps1;..\..\tools\RestoreSetup.Common.ps1;..\..\tools\Prepare-Recovery.ps1;..\..\tools\Start-Recovery.ps1;..\..\tools\Get-BitLockerInfo.ps1" Link="tools\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\tools\bin\**" Link="tools\bin\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
