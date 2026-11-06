@@ -45,7 +45,7 @@ Name: "{group}\RestoreNest"; Filename: "{app}\SystemCare.exe"
 Name: "{autodesktop}\RestoreNest"; Filename: "{app}\SystemCare.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\SystemCare.exe"; Description: "{cm:LaunchProgram,RestoreNest}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\SystemCare.exe"; Description: "{cm:LaunchProgram,RestoreNest}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [Code]
 procedure CurPageChanged(CurPageID: Integer);
